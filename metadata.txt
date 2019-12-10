@@ -7,14 +7,14 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=PDS processing
-qgisMinimumVersion=2.0
-description=Gridding with faults
-version=0.1
+name=PUMA+ processing
+qgisMinimumVersion=3.0
+description=PUMA+ processing algorithms
+version=0.2
 author=Viktor Kondrashov
 email=viktor@gmail.com
 
-about=Tigress QGIS processing algorithms
+about=PUMA+ processing algorithms for QGIS
 
 tracker=github.com
 repository=github.com

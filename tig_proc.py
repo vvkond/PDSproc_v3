@@ -33,8 +33,8 @@ import os
 import sys
 import inspect
 
-from processing.core.Processing import Processing
-from tig_proc_provider import TigSurfitProvider
+from qgis.core import QgsProcessingAlgorithm, QgsApplication
+from .tig_proc_provider import TigSurfitProvider
 
 cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
 
@@ -42,13 +42,17 @@ if cmd_folder not in sys.path:
     sys.path.insert(0, cmd_folder)
 
 
-class TigSurfitPlugin:
+class TigSurfitPlugin(object):
 
     def __init__(self):
+        self.provider = None
+
+    def initProcessing(self):
         self.provider = TigSurfitProvider()
+        QgsApplication.processingRegistry().addProvider(self.provider)
 
     def initGui(self):
-        Processing.addProvider(self.provider)
+        self.initProcessing()
 
     def unload(self):
-        Processing.removeProvider(self.provider)
+        QgsApplication.processingRegistry().removeProvider(self.provider)

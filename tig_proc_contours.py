@@ -12,24 +12,13 @@ import tempfile
 import glob, os
 import shutil
 
-from PyQt4.QtCore import QSettings, QProcess, QVariant
 from qgis.analysis import QgsGeometryAnalyzer
+from qgis.PyQt.QtCore import QCoreApplication, QSettings, QProcess, QVariant
 from qgis.utils import iface
 from qgis.core import *
-
-import processing
-from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.parameters import ParameterMultipleInput
-from processing.core.parameters import ParameterRaster
-from processing.core.parameters import ParameterVector
-from processing.core.parameters import ParameterNumber
-from processing.core.outputs import OutputVector
-from processing.tools import dataobjects, vector
-from processing.tools.vector import VectorWriter
 from processing.tools.system import getTempFilename
 
-
-class TigContouringAlgorithm(GeoAlgorithm):
+class TigContouringAlgorithm(QgsProcessingAlgorithm):
     """This is an example algorithm that takes a vector layer and
     creates a new one just with just those features of the input
     layer that are selected.
@@ -51,42 +40,63 @@ class TigContouringAlgorithm(GeoAlgorithm):
     INPUT_FAULT = 'INPUT_FAULT'
     INTERVAL = 'INTERVAL'
 
-    def defineCharacteristics(self):
+    def tr(self, string):
+        return QCoreApplication.translate('Processing', string)
+
+    def name(self):
+        return 'TigContouringAlgorithm'
+
+    def groupId(self):
+        return 'PUMAplus'
+
+    def group(self):
+        return self.tr('Сетки')
+
+    def displayName(self):
+        """
+        Returns the translated algorithm name, which should be used for any
+        user-visible display of the algorithm name.
+        """
+        return self.tr('Создать изолинии')
+
+    def createInstance(self):
+        return TigContouringAlgorithm()
+
+    def initAlgorithm(self, config):
         """Here we define the inputs and output of the algorithm, along
         with some other properties.
         """
 
-        # The name that the user will see in the toolbox
-        self.name = self.tr(u'Create isolines')
-
-        # The branch of the toolbox under which the algorithm will appear
-        self.group = self.tr(u'Grids')
-
         # We add the input vector layer. It can have any kind of geometry
         # It is a mandatory (not optional) one, hence the False argument
-        self.addParameter(ParameterRaster(self.INPUT_LAYER, self.tr('Input layer'), False))
-        self.addParameter(ParameterVector(self.INPUT_FAULT,
-                      self.tr('Input faults'), [ParameterVector.VECTOR_TYPE_LINE], True))
-        self.addParameter(ParameterNumber(self.INTERVAL, self.tr('Interval'), 0, None, 10, True))
+        self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT_LAYER, self.tr('Растр'),
+                                                              [QgsProcessing.TypeRaster], '', False))
+
+        self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT_FAULT,
+                      self.tr('Разломы'), [QgsProcessing.TypeVectorLine], '', True))
+
+        self.addParameter(QgsProcessingParameterNumber(self.INTERVAL, self.tr('Интервал'),
+                                                       type=QgsProcessingParameterNumber.Double,
+                                                       defaultValue=10, optional=True))
 
         # We add a vector layer as output
-        self.addOutput(OutputVector(self.OUTPUT_LAYER, self.tr('Output layer')))
+        self.addOutput(QgsProcessingParameterVectorDestination(self.OUTPUT_LAYER, self.tr('Output layer')))
 
 
-    def processAlgorithm(self, progress):
+    def processAlgorithm(self, , parameters, context, feedback):
         inputFilename = self.getParameterValue(self.INPUT_LAYER)
         output = self.getOutputValue(self.OUTPUT_LAYER)
-        inputFaultFilename = self.getParameterValue(self.INPUT_FAULT)
+        faultLayer = self.self.parameterAsVectorLayer(parameters,self.INPUT_FAULT, context)
         self.Inter = self.getParameterValue(self.INTERVAL)
 
-        rasterLayer = dataobjects.getObjectFromUri(inputFilename)
+        rasterLayer = self.parameterAsRasterLayer(parameters, inputFilename, context)
         self.extent = rasterLayer.extent()
 
         self.plugin_dir = os.path.dirname(__file__)
         self.temp_path = tempfile.gettempdir()
 
-        if inputFaultFilename is not None:
-            self.contourWithFaults(rasterLayer, inputFaultFilename, output, progress )
+        if faultLayer is not None:
+            self.contourWithFaults(rasterLayer, faultLayer, output, feedback )
         else:
             processing.runalg('gdalogr:contour', inputFilename, self.Inter, 'ELEV', None, output)
 
@@ -96,7 +106,7 @@ class TigContouringAlgorithm(GeoAlgorithm):
         self.tclFilename = os.path.join(self.temp_path, 'tempjob.tcl')
 
 
-    def contourWithFaults(self, rasterLayer, inputFaultFilename, output, progress):
+    def contourWithFaults(self, rasterLayer, faultLayer, output, progress):
         # bufferLayerName = os.tempnam()+'_buf_layer.shp'
         bufferLayerName = getTempFilename('shp')
         cellSize = min(self.extent.width() / rasterLayer.width(), self.extent.height() / rasterLayer.height())
@@ -106,7 +116,6 @@ class TigContouringAlgorithm(GeoAlgorithm):
         block = provider.block(1, self.extent, rows, cols)
         noDataValue = block.noDataValue()
 
-        faultLayer = dataobjects.getObjectFromUri(inputFaultFilename)
         if faultLayer is None:
             return
 
@@ -129,20 +138,9 @@ class TigContouringAlgorithm(GeoAlgorithm):
         shutil.copyfile(rasterLayer.source(), tempRasterName)
         processing.runalg('gdalogr:rasterize_over', bufferLayerName, 'faultParam', tempRasterName)
         processing.runalg('gdalogr:contour', tempRasterName, self.Inter, 'ELEV', None, output)
-        # try:
-        #     toRemoveTmpl = self.temp_path + '/*_buf_layer.*'
-        #     self.purge(toRemoveTmpl)
-        # except Exception as e:
-        #     progress.setInfo(str(e))
-        #
-        # try:
-        #     toRemoveTmpl = self.temp_path + '/*_temp_raster_.*'
-        #     self.purge(toRemoveTmpl)
-        # except Exception as e:
-        #     progress.setInfo(str(e))
 
 
-    def prepareInputData(self):
+    def prepareInputData(self, parameters, context):
         inputFaultFilename = self.getParameterValue(self.INPUT_FAULT)
         self.faultFilename = None
 
