@@ -12,22 +12,25 @@ __revision__ = '$Format:%H$'
 import tempfile
 import os
 
-from PyQt4.QtCore import QSettings, QProcess, QVariant
-from qgis.utils import iface
-from qgis.core import *
+from qgis.PyQt.QtCore import QCoreApplication, QSettings, QProcess, QVariant
 from qgis.analysis import QgsRasterCalculatorEntry, QgsRasterCalculator
-
-import processing
-from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.parameters import ParameterRaster
-from processing.core.parameters import ParameterVector
-from processing.core.parameters import ParameterTableField, ParameterBoolean
-from processing.core.outputs import OutputRaster, OutputVector
-from processing.tools import dataobjects, vector
-from processing.tools.vector import VectorWriter
+from qgis.core import *
 from processing.tools.system import getTempFilename
+import processing
+from qgis.core import (QgsProcessing,
+                       QgsFeatureSink,
+                       QgsProcessingAlgorithm,
+                       QgsProcessingParameterFeatureSource,
+                       QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterVectorLayer,
+                       QgsProcessingParameterRasterDestination,
+                       QgsProcessingParameterField,
+                       QgsProcessingParameterExtent,
+                       QgsProcessingParameterNumber,
+                       QgsProcessingParameterVectorDestination,
+                       QgsProcessingParameterFileDestination)
 
-class TigSurfaceCorrectionAlgorithm(GeoAlgorithm):
+class TigSurfaceCorrectionAlgorithm(QgsProcessingAlgorithm):
     OUTPUT_LAYER = 'OUTPUT_LAYER'
     OUTPUT_QVECTOR = 'OUTPUT_QVECTOR'
     INPUT_LAYER = 'INPUT_LAYER'
@@ -35,59 +38,75 @@ class TigSurfaceCorrectionAlgorithm(GeoAlgorithm):
     INPUT_FIELD = 'INPUT_FIELD'
     INPUT_RASTER = 'INPUT_RASTER'
 
-    def defineCharacteristics(self):
-        self.name = self.tr(u'Surface correction')
+    def tr(self, string):
+        return QCoreApplication.translate('Processing', string)
 
-        # The branch of the toolbox under which the algorithm will appear
-        self.group = u'Grids'
+    def name(self):
+        return 'TigSurfaceCorrectionAlgorithm'
 
-        self.addParameter(ParameterRaster(self.INPUT_RASTER,
-                                          u'Поверхность для корректировки', False))
+    def groupId(self):
+        return 'PUMAgrids'
 
-        self.addParameter(ParameterVector(self.INPUT_LAYER,
-                                          u'Точки для корректировки поверхности', [ParameterVector.VECTOR_TYPE_POINT], False))
-        self.addParameter(ParameterTableField(self.INPUT_FIELD, u'Поле',
-                                              self.INPUT_LAYER, ParameterTableField.DATA_TYPE_NUMBER))
+    def group(self):
+        return self.tr('Сетки')
 
-        self.addParameter(ParameterVector(self.INPUT_FAULT,
-                                          u'Разломы', [ParameterVector.VECTOR_TYPE_LINE], True))
+    def displayName(self):
+        """
+        Returns the translated algorithm name, which should be used for any
+        user-visible display of the algorithm name.
+        """
+        return self.tr(u'Корректировка поверхности')
 
-        self.addOutput(OutputRaster(self.OUTPUT_LAYER, u'Откорректированная поверхность'))
-        self.addOutput(OutputVector(self.OUTPUT_QVECTOR, u'Контроль качества корректировки'))
+    def createInstance(self):
+        return TigSurfaceCorrectionAlgorithm()
 
-    def processAlgorithm(self, progress):
-        inputSurfaceName = self.getParameterValue(self.INPUT_RASTER)
-        inputFilename = self.getParameterValue(self.INPUT_LAYER)
-        output = self.getOutputValue(self.OUTPUT_LAYER)
-        outputVector = self.getOutputValue(self.OUTPUT_QVECTOR)
-        inputFaultFilename = self.getParameterValue(self.INPUT_FAULT)
-        inputField = self.getParameterValue(self.INPUT_FIELD)
+    def initAlgorithm(self, config):
+        self.addParameter(QgsProcessingParameterRasterLayer(self.INPUT_RASTER,
+                                          self.tr(u'Поверхность для корректировки')))
 
-        rasterLayer = dataobjects.getObjectFromUri(inputSurfaceName)
+        self.addParameter(QgsProcessingParameterVectorLayer(self.INPUT_LAYER,
+                                                            self.tr(u'Точки для корректировки поверхности'),
+                                                            [QgsProcessing.TypeVectorPoint], '', False))
+        self.addParameter(QgsProcessingParameterField(self.INPUT_FIELD, self.tr(u'Поле'), '',
+                                              self.INPUT_LAYER, QgsProcessingParameterField.Numeric))
+
+        self.addParameter(QgsProcessingParameterVectorLayer(self.INPUT_FAULT,
+                                          self.tr(u'Разломы'), [QgsProcessing.TypeVectorLine], '', True))
+
+        self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT_LAYER, u'Откорректированная поверхность'))
+        self.addParameter(QgsProcessingParameterVectorDestination(self.OUTPUT_QVECTOR, u'Контроль качества корректировки'))
+
+    def processAlgorithm(self, parameters, context, progress):
+        output = self.parameterAsOutputLayer(parameters, self.OUTPUT_LAYER, context)
+        outputVector = self.parameterAsOutputLayer(parameters, self.OUTPUT_QVECTOR, context)
+        inputFaultFilename = self.parameterAsString(parameters, self.INPUT_FAULT, context)
+        inputField = self.parameterAsString(parameters, self.INPUT_FIELD, context)
+
+        rasterLayer = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         self.extent = rasterLayer.extent()
 
-        pointsLayer = dataobjects.getObjectFromUri(inputFilename)
+        pointsLayer = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
         pointsProvider = pointsLayer.dataProvider()
 
         tempResidualName = getTempFilename('shp')
-        progress.setInfo(tempResidualName)
+        progress.pushInfo(tempResidualName)
         tempDeltasName = getTempFilename('tif')
-        progress.setInfo(tempDeltasName)
+        progress.pushInfo(tempDeltasName)
 
-        fields = pointsProvider.fields().toList()
+        fields = pointsProvider.fields()
         settings = QSettings()
         systemEncoding = settings.value('/UI/encoding', 'System')
-        fields.append(('Delta1', QVariant.Double))
-        writer = VectorWriter(tempResidualName, systemEncoding,
+        fields.append(QgsField('Delta1', QVariant.Double))
+        writer = QgsVectorFileWriter(tempResidualName, systemEncoding,
                               fields,
-                              QGis.WKBPoint, pointsProvider.crs())
+                              QgsWkbTypes.Point, pointsProvider.crs(), 'ESRI Shapefile')
 
         #1. Extract surface points and write deltas
-        progress.setInfo('Step 1: Extraxt surface points and write deltas')
+        progress.pushInfo('Step 1: Extraxt surface points and write deltas')
         features = pointsProvider.getFeatures()
         for f in features:
             pointGeom = f.geometry()
-            if pointGeom.wkbType() == QGis.WKBMultiPoint:
+            if pointGeom.wkbType() == QgsWkbTypes.MultiPoint:
                 pointPoint = pointGeom.asMultiPoint()[0]
             else:
                 pointPoint = pointGeom.asPoint()
@@ -100,7 +119,8 @@ class TigSurfaceCorrectionAlgorithm(GeoAlgorithm):
 
             rastSample = rasterLayer.dataProvider().identify(pointPoint, QgsRaster.IdentifyFormatValue).results()
             if rastSample and len(rastSample):
-                attrs.append(inputAttr - float(rastSample[rastSample.keys()[0]]))
+                keys = list(rastSample.keys())
+                attrs.append(inputAttr - float(rastSample[keys[0]]))
             else:
                 attrs.append(None)
 
@@ -109,27 +129,29 @@ class TigSurfaceCorrectionAlgorithm(GeoAlgorithm):
             writer.addFeature(outFeat)
         del writer
         writer = None
-        progress.setPercentage(25)
+        progress.setProgress(25)
 
 
         #2.Make delta`s surface
-        progress.setInfo('Step 2: Make delta`s surface')
+        progress.pushInfo('Step 2: Make delta`s surface')
         strExtent = '{0},{1},{2},{3}'.format(self.extent.xMinimum(), self.extent.xMaximum(),
                                              self.extent.yMinimum(), self.extent.yMaximum())
-        processing.runalg('tigressprocessing:creategridwithfaults', {"INPUT_LAYER": tempResidualName,
-                                                                     "INPUT_FIELD": 'Delta1',
-                                                                     "INPUT_FAULT" : inputFaultFilename,
-                                                                     "INPUT_EXTENT": strExtent,
-                                                                     "EXPAND_PERCENT_X" : '0',
-                                                                     "EXPAND_PERCENT_Y": '0',
-                                                                     "STEP_X": rasterLayer.rasterUnitsPerPixelX(),
-                                                                     "STEP_Y": rasterLayer.rasterUnitsPerPixelY(),
-                                                                     "OUTPUT_LAYER" : tempDeltasName})
-        progress.setPercentage(50)
+        processing.run('PUMAplus:creategridwithfaults',
+                       {"INPUT_LAYER": tempResidualName,
+                        "INPUT_FIELD": 'Delta1',
+                        "INPUT_FAULT" : inputFaultFilename,
+                        "INPUT_EXTENT": strExtent,
+                        "EXPAND_PERCENT_X" : '0',
+                        "EXPAND_PERCENT_Y": '0',
+                        "STEP_X": rasterLayer.rasterUnitsPerPixelX(),
+                        "STEP_Y": rasterLayer.rasterUnitsPerPixelY(),
+                        "OUTPUT_LAYER" : tempDeltasName},
+                       feedback=progress)
+        progress.setProgress(50)
 
 
         #3. Add input surface and delta`s surface
-        progress.setInfo('Step 3: Add input surface and delta`s surface')
+        progress.pushInfo('Step 3: Add input surface and delta`s surface')
         tempDeltasRaster = QgsRasterLayer(tempDeltasName, 'TempDeltasLayer')
         entries = []
         ras = QgsRasterCalculatorEntry()
@@ -145,17 +167,17 @@ class TigSurfaceCorrectionAlgorithm(GeoAlgorithm):
         calc = QgsRasterCalculator('ras@1 + ras1@1', output, 'GTiff', rasterLayer.extent(),
                                    rasterLayer.width(), rasterLayer.height(), entries)
         calc.processCalculation()
-        progress.setPercentage(75)
+        progress.setProgress(75)
 
         # 4. Extract points from corrected surface
-        progress.setInfo('Step 5: Extract points from corrected surface')
+        progress.pushInfo('Step 5: Extract points from corrected surface')
         sumRaster = QgsRasterLayer(output, 'sumSurface')
         deltasLayer = QgsVectorLayer(tempResidualName, "testlayer_shp", "ogr")
-        fields = deltasLayer.dataProvider().fields().toList()
-        fields.append(('Delta2', QVariant.Double))
-        writer = VectorWriter(outputVector, systemEncoding,
+        fields = deltasLayer.dataProvider().fields()
+        fields.append(QgsField('Delta2', QVariant.Double))
+        writer = QgsVectorFileWriter(outputVector, systemEncoding,
                               fields,
-                              QGis.WKBPoint, pointsProvider.crs())
+                              QgsWkbTypes.Point, pointsProvider.crs(), 'ESRI Shapefile')
         for f in deltasLayer.dataProvider().getFeatures():
             pointGeom = f.geometry()
             pointPoint = pointGeom.asPoint()
@@ -168,7 +190,8 @@ class TigSurfaceCorrectionAlgorithm(GeoAlgorithm):
 
             rastSample = sumRaster.dataProvider().identify(pointPoint, QgsRaster.IdentifyFormatValue).results()
             if rastSample and len(rastSample):
-                attrs.append(inputAttr - float(rastSample[rastSample.keys()[0]]))
+                keys = list(rastSample.keys())
+                attrs.append(inputAttr - float(rastSample[keys[0]]))
             else:
                 attrs.append(None)
 
@@ -180,7 +203,8 @@ class TigSurfaceCorrectionAlgorithm(GeoAlgorithm):
         del sumRaster
         sumRaster = None
 
-        progress.setPercentage(100)
+        progress.setProgress(100)
+        return {self.OUTPUT_LAYER: output, self.OUTPUT_QVECTOR: outputVector}
 
 
 

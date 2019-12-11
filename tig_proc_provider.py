@@ -31,7 +31,7 @@ __revision__ = '$Format:%H$'
 import importlib
 from qgis.core import QgsProcessingProvider
 # from .tig_proc_algorithm import TigSurfitAlgorithm
-from .tig_proc_triangle import TigTriangleAlgorithm
+# from .tig_proc_correction import TigSurfaceCorrectionAlgorithm
 
 def load_class(full_class_string,on_except=None):
     """
@@ -53,9 +53,9 @@ def load_class(full_class_string,on_except=None):
 
 TigSurfitAlgorithm                      =load_class('PDSproc.tig_proc_algorithm.TigSurfitAlgorithm'                                    ,on_except=lambda:None)
 # TigContouringAlgorithm                  =load_class('PDSproc.tig_proc_contours.TigContouringAlgorithm'                                 ,on_except=lambda:None)
-# TigTriangleAlgorithm                    =load_class('PDSproc.tig_proc_triangle.TigTriangleAlgorithm'                                   ,on_except=lambda:None)
-# TigReservesByRasterAlgorithm            =load_class('PDSproc.tig_proc_reservesByRaster.TigReservesByRasterAlgorithm'                   ,on_except=lambda:None)
-# TigSurfaceCorrectionAlgorithm           =load_class('PDSproc.tig_proc_correction.TigSurfaceCorrectionAlgorithm'                        ,on_except=lambda:None)
+TigTriangleAlgorithm                    =load_class('PDSproc.tig_proc_triangle.TigTriangleAlgorithm'                                   ,on_except=lambda:None)
+TigReservesByRasterAlgorithm            =load_class('PDSproc.tig_proc_reservesByRaster.TigReservesByRasterAlgorithm'                   ,on_except=lambda:None)
+TigSurfaceCorrectionAlgorithm           =load_class('PDSproc.tig_proc_correction.TigSurfaceCorrectionAlgorithm'                        ,on_except=lambda:None)
 # TigSurfaceIntersectCorrectAlgorithm     =load_class('PDSproc.tig_proc_surfIntersection.TigSurfaceIntersectCorrectAlgorithm'            ,on_except=lambda:None)
 # TigVolumeMethodAlgorithm                =load_class('PDSproc.tig_proc_reservesVolume.TigVolumeMethodAlgorithm'                         ,on_except=lambda:None)
 # TigUpdatePointLocationAlgorithm         =load_class('PDSproc.tig_proc_upd_point_locaion.TigUpdatePointLocationAlgorithm'               ,on_except=lambda:None)
@@ -81,8 +81,8 @@ class TigSurfitProvider(QgsProcessingProvider):
                         TigSurfitAlgorithm() 
                         # ,TigContouringAlgorithm()
                         ,TigTriangleAlgorithm()
-                        # ,TigReservesByRasterAlgorithm()
-                        # ,TigSurfaceCorrectionAlgorithm()
+                        ,TigReservesByRasterAlgorithm()
+                        ,TigSurfaceCorrectionAlgorithm()
                         # ,TigSurfaceIntersectCorrectAlgorithm()
                         # ,TigVolumeMethodAlgorithm()
                         # ,TigUpdatePointLocationAlgorithm()
@@ -127,12 +127,12 @@ class TigSurfitProvider(QgsProcessingProvider):
         It is also used to create the command line name of all the
         algorithms from this provider.
         """
-        return "PUMA+"
+        return "PUMAplus"
 
     def name(self):
         """This is the provired full name.
         """
-        return "PUMA+"
+        return "PUMAplus"
 
     def icon(self):
         """We return the default icon.

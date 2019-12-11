@@ -62,7 +62,7 @@ class TigSurfitAlgorithm(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def name(self):
-        return 'TigSurfitAlgorithm'
+        return 'creategridwithfaults'
 
     def groupId(self):
         return 'PUMAgrids'
