@@ -12,22 +12,23 @@ __revision__ = '$Format:%H$'
 import tempfile
 import os
 
-from PyQt4.QtCore import QSettings, QProcess, QVariant
-from qgis.utils import iface
-from qgis.core import *
+from qgis.PyQt.QtCore import QCoreApplication
 from qgis.analysis import QgsRasterCalculatorEntry, QgsRasterCalculator
+from qgis.core import *
+from qgis.core import (QgsProcessing,
+                       QgsFeatureSink,
+                       QgsProcessingAlgorithm,
+                       QgsProcessingParameterFeatureSource,
+                       QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterVectorLayer,
+                       QgsProcessingParameterRasterDestination,
+                       QgsProcessingParameterField,
+                       QgsProcessingParameterExtent,
+                       QgsProcessingParameterNumber,
+                       QgsProcessingParameterVectorDestination,
+                       QgsProcessingParameterFileDestination)
 
-import processing
-from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.parameters import ParameterRaster, ParameterNumber
-from processing.core.parameters import ParameterVector
-from processing.core.parameters import ParameterTableField, ParameterBoolean
-from processing.core.outputs import OutputRaster, OutputVector
-from processing.tools import dataobjects, vector
-from processing.tools.vector import VectorWriter
-from processing.tools.system import getTempFilename
-
-class TigVolumeMethodAlgorithm(GeoAlgorithm):
+class TigVolumeMethodAlgorithm(QgsProcessingAlgorithm):
     OUTPUT_SURFACE = 'OUTPUT_RASTER'
     TOP_SURFACE = 'TOP_SURFACE'
     BOTTOM_SURFACE = 'BOTTOM_SURFACE'
@@ -35,40 +36,49 @@ class TigVolumeMethodAlgorithm(GeoAlgorithm):
     NTG_SURFACE = 'NTG_SURFACE'
     VNK_VALUE = 'VNK'
 
-    def defineCharacteristics(self):
-        self.name = self.tr(u'Volume method')
-        self.description = u'Подсчет запасов объемным методом'
+    def tr(self, string):
+        return QCoreApplication.translate('Processing', string)
 
-        # The branch of the toolbox under which the algorithm will appear
-        self.group = u'Grids'
+    def name(self):
+        return 'TigVolumeMethodAlgorithm'
 
-        self.addParameter(ParameterRaster(self.TOP_SURFACE,
-                                          u'Поверхность кровли', False))
-        self.addParameter(ParameterRaster(self.BOTTOM_SURFACE,
-                                          u'Поверхность подошвы', False))
-        self.addParameter(ParameterRaster(self.NTG_SURFACE,
-                                          u'Поверхность песчанистости', False))
-        self.addParameter(ParameterRaster(self.PORO_SURFACE,
-                                          u'Поверхность пористости', False))
-        self.addParameter(ParameterNumber(self.VNK_VALUE, u'Уровень ВНК ', 0, None, 2500, False))
+    def groupId(self):
+        return 'PUMAgrids'
 
-        self.addOutput(OutputRaster(self.OUTPUT_SURFACE, self.tr('Output surface')))
+    def group(self):
+        return self.tr('Сетки')
+
+    def displayName(self):
+        return self.tr(u'Подсчет запасов объемным методом')
+
+    def createInstance(self):
+        return TigVolumeMethodAlgorithm()
+
+    def initAlgorithm(self, config):
+        self.addParameter(QgsProcessingParameterRasterLayer(self.TOP_SURFACE,
+                                          self.tr('Поверхность кровли')))
+        self.addParameter(QgsProcessingParameterRasterLayer(self.BOTTOM_SURFACE,
+                                          self.tr('Поверхность подошвы')))
+        self.addParameter(QgsProcessingParameterRasterLayer(self.NTG_SURFACE,
+                                          self.tr('Поверхность песчанистости'), '', True))
+        self.addParameter(QgsProcessingParameterRasterLayer(self.PORO_SURFACE,
+                                          self.tr('Поверхность пористости'), '', True))
+        self.addParameter(QgsProcessingParameterNumber(self.VNK_VALUE, self.tr('Уровень ВНК ')
+                                                       , type= QgsProcessingParameterNumber.Double
+                                                       , defaultValue=2500
+                                                       , optional=False))
+
+        self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT_SURFACE, self.tr('Output surface')))
 
 
-    def processAlgorithm(self, progress):
-        output = self.getOutputValue(self.OUTPUT_SURFACE)
-        topSurfaceName = self.getParameterValue(self.TOP_SURFACE)
-        bottomSurfaceName = self.getParameterValue(self.BOTTOM_SURFACE)
-        ntgSurfaceName = self.getParameterValue(self.NTG_SURFACE)
-        poroSurfaceName = self.getParameterValue(self.PORO_SURFACE)
-        vnkValue = self.getParameterValue(self.VNK_VALUE)
+    def processAlgorithm(self, parameters, context, progress):
+        output = self.parameterAsOutputLayer(parameters, self.OUTPUT_SURFACE, context)
+        topRaster = self.parameterAsRasterLayer(parameters, self.TOP_SURFACE, context)
+        bottomRaster = self.parameterAsRasterLayer(parameters, self.BOTTOM_SURFACE, context)
+        ntgRaster = self.parameterAsRasterLayer(parameters, self.NTG_SURFACE, context)
+        poroRaster = self.parameterAsRasterLayer(parameters, self.PORO_SURFACE, context)
+        vnkValue = self.parameterAsDouble(parameters, self.VNK_VALUE, context)
 
-
-        bottomRaster = dataobjects.getObjectFromUri(bottomSurfaceName)
-        topRaster = dataobjects.getObjectFromUri(topSurfaceName)
-        ntgRaster = dataobjects.getObjectFromUri(ntgSurfaceName)
-        poroRaster = dataobjects.getObjectFromUri(poroSurfaceName)
-        
         formula = '( base@1 - top@1 ) * ( base@1 <= {0} ) + ( {0} - top@1 ) * ( base@1 > {0} ) * ' \
                   '( (  base@1 - top@1 ) * ( base@1 <= {0}) + ( {0} - top@1 ) * ( base@1 > {0} ) > 0)'.format(vnkValue)
 
@@ -85,6 +95,7 @@ class TigVolumeMethodAlgorithm(GeoAlgorithm):
         entries.append(ras1)
         calc = QgsRasterCalculator(formula, output, 'GTiff', bottomRaster.extent(),
                                    bottomRaster.width(), bottomRaster.height(), entries)
-        calc.processCalculation()
+        calc.processCalculation(progress)
 
+        return {self.OUTPUT_SURFACE: output}
 

@@ -3,10 +3,13 @@
   <component name="ChangeListManager">
     <list default="true" id="48f9de5e-db22-41dc-9fea-8a3c3e06d1be" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tig_proc_algorithm.py" beforeDir="false" afterPath="$PROJECT_DIR$/tig_proc_algorithm.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tig_proc_correction.py" beforeDir="false" afterPath="$PROJECT_DIR$/tig_proc_correction.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tig_proc_provider.py" beforeDir="false" afterPath="$PROJECT_DIR$/tig_proc_provider.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tig_proc_reservesByRaster.py" beforeDir="false" afterPath="$PROJECT_DIR$/tig_proc_reservesByRaster.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tig_proc_reservesVolume.py" beforeDir="false" afterPath="$PROJECT_DIR$/tig_proc_reservesVolume.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tig_proc_set_custom_prop.py" beforeDir="false" afterPath="$PROJECT_DIR$/tig_proc_set_custom_prop.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tig_proc_set_pds_custom_prop.py" beforeDir="false" afterPath="$PROJECT_DIR$/tig_proc_set_pds_custom_prop.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tig_proc_surfIntersection.py" beforeDir="false" afterPath="$PROJECT_DIR$/tig_proc_surfIntersection.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tig_proc_upd_lbl_locaion.py" beforeDir="false" afterPath="$PROJECT_DIR$/tig_proc_upd_lbl_locaion.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tig_proc_upd_point_locaion.py" beforeDir="false" afterPath="$PROJECT_DIR$/tig_proc_upd_point_locaion.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -17,22 +20,10 @@
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/tig_proc.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="850">
-              <caret line="50" column="31" selection-start-line="50" selection-start-column="31" selection-end-line="50" selection-end-column="31" />
-              <folding>
-                <element signature="e#1292#1301#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/tig_proc_provider.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="357">
-              <caret line="78" column="25" lean-forward="true" selection-start-line="78" selection-start-column="25" selection-end-line="78" selection-end-column="25" />
+            <state relative-caret-position="-153">
+              <caret line="36" column="42" lean-forward="true" selection-start-line="36" selection-start-column="42" selection-end-line="36" selection-end-column="42" />
               <folding>
                 <element signature="e#1291#1307#0" expanded="true" />
               </folding>
@@ -40,13 +31,25 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/tig_proc_correction.py">
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/tig_proc_upd_lbl_locaion.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="362">
-              <caret line="80" column="50" selection-start-line="80" selection-start-column="50" selection-end-line="80" selection-end-column="50" />
+            <state relative-caret-position="3536">
+              <caret line="231" column="72" lean-forward="true" selection-start-line="231" selection-start-column="72" selection-end-line="231" selection-end-column="72" />
               <folding>
-                <element signature="e#230#245#0" expanded="true" />
+                <element signature="e#222#237#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/tig_proc_upd_point_locaion.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="391">
+              <caret line="77" column="27" selection-start-line="77" selection-start-column="18" selection-end-line="77" selection-end-column="27" />
+              <folding>
+                <element signature="e#222#237#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -55,8 +58,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/tig_proc_algorithm.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="290">
-              <caret line="145" column="44" selection-start-line="145" selection-start-column="22" selection-end-line="145" selection-end-column="44" />
+            <state relative-caret-position="1241">
+              <caret line="139" column="60" selection-start-line="139" selection-start-column="30" selection-end-line="139" selection-end-column="60" />
               <folding>
                 <element signature="e#230#245#0" expanded="true" />
               </folding>
@@ -67,8 +70,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/tig_proc_reservesByRaster.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1615">
-              <caret line="95" column="47" selection-start-line="95" selection-start-column="47" selection-end-line="95" selection-end-column="71" />
+            <state relative-caret-position="-607">
+              <caret line="107" column="60" lean-forward="true" selection-start-line="107" selection-start-column="31" selection-end-line="107" selection-end-column="60" />
               <folding>
                 <element signature="e#229#244#0" expanded="true" />
               </folding>
@@ -81,12 +84,10 @@
   <component name="FindInProjectRecents">
     <findStrings>
       <find>name(</find>
-      <find>progress</find>
       <find>getparametervalue</find>
       <find>vectorLayer</find>
       <find>raster</find>
       <find>output</find>
-      <find>getTempFilename</find>
       <find>polylineToPolygon</find>
       <find>setConsoleInfo</find>
       <find>PUMA+</find>
@@ -97,6 +98,19 @@
       <find>Wkb</find>
       <find>wkb</find>
       <find>attribute</find>
+      <find>getTempFilename</find>
+      <find>script</find>
+      <find>QVarian</find>
+      <find>pending</find>
+      <find>QgsExpressionContext</find>
+      <find>script(</find>
+      <find>expressionContext</find>
+      <find>QgsExpression</find>
+      <find>progress</find>
+      <find>ParameterTableField.DATA_TYPE_ANY</find>
+      <find>ParameterTableField</find>
+      <find>QgsProcessingParameterField</find>
+      <find>self.getParameterValue(</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -112,6 +126,12 @@
         <option value="$PROJECT_DIR$/metadata.txt" />
         <option value="$PROJECT_DIR$/tig_proc_algorithm.py" />
         <option value="$PROJECT_DIR$/tig_proc_correction.py" />
+        <option value="$PROJECT_DIR$/tig_proc_surfIntersection.py" />
+        <option value="$PROJECT_DIR$/tig_proc_reservesVolume.py" />
+        <option value="$PROJECT_DIR$/tig_proc_set_custom_prop.py" />
+        <option value="$PROJECT_DIR$/tig_proc_set_pds_custom_prop.py" />
+        <option value="$PROJECT_DIR$/tig_proc_upd_point_locaion.py" />
+        <option value="$PROJECT_DIR$/tig_proc_upd_lbl_locaion.py" />
         <option value="$PROJECT_DIR$/tig_proc_provider.py" />
       </list>
     </option>
@@ -127,7 +147,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -139,6 +158,7 @@
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -264,7 +284,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/tig_proc.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="850">
+        <state relative-caret-position="838">
           <caret line="50" column="31" selection-start-line="50" selection-start-column="31" selection-end-line="50" selection-end-column="31" />
           <folding>
             <element signature="e#1292#1301#0" expanded="true" />
@@ -272,42 +292,101 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/tig_proc_correction.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-816">
+          <folding>
+            <element signature="e#230#245#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tig_proc_reservesVolume.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="447">
+          <caret line="33" column="37" lean-forward="true" selection-start-line="33" selection-start-column="37" selection-end-line="33" selection-end-column="37" />
+          <folding>
+            <element signature="e#230#245#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tig_proc_surfIntersection.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="799">
+          <caret line="83" column="8" selection-start-line="83" selection-start-column="8" selection-end-line="83" selection-end-column="44" />
+          <folding>
+            <element signature="e#230#245#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/tig_proc_reservesByRaster.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1615">
-          <caret line="95" column="47" selection-start-line="95" selection-start-column="47" selection-end-line="95" selection-end-column="71" />
+        <state relative-caret-position="-607">
+          <caret line="107" column="60" lean-forward="true" selection-start-line="107" selection-start-column="31" selection-end-line="107" selection-end-column="60" />
           <folding>
             <element signature="e#229#244#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/tig_proc_set_pds_custom_prop.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="170">
+          <caret line="46" column="4" selection-start-line="46" selection-start-column="4" selection-end-line="64" selection-end-column="36" />
+          <folding>
+            <element signature="e#222#237#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tig_proc_set_custom_prop.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="73">
+          <caret line="35" column="45" selection-start-line="35" selection-start-column="23" selection-end-line="35" selection-end-column="45" />
+          <folding>
+            <element signature="e#222#237#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/tig_proc_algorithm.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="290">
-          <caret line="145" column="44" selection-start-line="145" selection-start-column="22" selection-end-line="145" selection-end-column="44" />
+        <state relative-caret-position="1241">
+          <caret line="139" column="60" selection-start-line="139" selection-start-column="30" selection-end-line="139" selection-end-column="60" />
           <folding>
             <element signature="e#230#245#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/tig_proc_correction.py">
+    <entry file="file://$PROJECT_DIR$/tig_proc_upd_point_locaion.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="362">
-          <caret line="80" column="50" selection-start-line="80" selection-start-column="50" selection-end-line="80" selection-end-column="50" />
+        <state relative-caret-position="391">
+          <caret line="77" column="27" selection-start-line="77" selection-start-column="18" selection-end-line="77" selection-end-column="27" />
           <folding>
-            <element signature="e#230#245#0" expanded="true" />
+            <element signature="e#222#237#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tig_proc_provider.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="357">
-          <caret line="78" column="25" lean-forward="true" selection-start-line="78" selection-start-column="25" selection-end-line="78" selection-end-column="25" />
+        <state relative-caret-position="-153">
+          <caret line="36" column="42" lean-forward="true" selection-start-line="36" selection-start-column="42" selection-end-line="36" selection-end-column="42" />
           <folding>
             <element signature="e#1291#1307#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tig_proc_upd_lbl_locaion.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="3536">
+          <caret line="231" column="72" lean-forward="true" selection-start-line="231" selection-start-column="72" selection-end-line="231" selection-end-column="72" />
+          <folding>
+            <element signature="e#222#237#0" expanded="true" />
           </folding>
         </state>
       </provider>

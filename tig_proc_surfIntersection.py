@@ -12,48 +12,59 @@ __revision__ = '$Format:%H$'
 import tempfile
 import os
 
-from PyQt4.QtCore import QSettings, QProcess, QVariant
-from qgis.utils import iface
-from qgis.core import *
+from qgis.PyQt.QtCore import QCoreApplication
 from qgis.analysis import QgsRasterCalculatorEntry, QgsRasterCalculator
+from qgis.core import *
+from qgis.core import (QgsProcessing,
+                       QgsFeatureSink,
+                       QgsProcessingAlgorithm,
+                       QgsProcessingParameterFeatureSource,
+                       QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterVectorLayer,
+                       QgsProcessingParameterRasterDestination,
+                       QgsProcessingParameterField,
+                       QgsProcessingParameterExtent,
+                       QgsProcessingParameterNumber,
+                       QgsProcessingParameterVectorDestination,
+                       QgsProcessingParameterFileDestination)
 
-import processing
-from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.parameters import ParameterRaster
-from processing.core.parameters import ParameterVector
-from processing.core.parameters import ParameterTableField, ParameterBoolean
-from processing.core.outputs import OutputRaster, OutputVector
-from processing.tools import dataobjects, vector
-from processing.tools.vector import VectorWriter
-from processing.tools.system import getTempFilename
-
-class TigSurfaceIntersectCorrectAlgorithm(GeoAlgorithm):
+class TigSurfaceIntersectCorrectAlgorithm(QgsProcessingAlgorithm):
     OUTPUT_SURFACE = 'OUTPUT_RASTER'
     TOP_SURFACE = 'TOP_SURFACE'
     BOTTOM_SURFACE = 'BOTTOM_SURFACE'
 
-    def defineCharacteristics(self):
-        self.name = self.tr(u'Surface intersection')
+    def tr(self, string):
+        return QCoreApplication.translate('Processing', string)
 
-        # The branch of the toolbox under which the algorithm will appear
-        self.group = u'Grids'
+    def name(self):
+        return 'TigSurfaceIntersectCorrectAlgorithm'
 
-        self.addParameter(ParameterRaster(self.TOP_SURFACE,
-                                          self.tr('Top surface'), False))
-        self.addParameter(ParameterRaster(self.BOTTOM_SURFACE,
-                                          self.tr('Bottom surface'), False))
+    def groupId(self):
+        return 'PUMAgrids'
 
-        self.addOutput(OutputRaster(self.OUTPUT_SURFACE, self.tr('Output surface')))
+    def group(self):
+        return self.tr('Сетки')
+
+    def displayName(self):
+        return self.tr(u'Пересечение поверхности')
+
+    def createInstance(self):
+        return TigSurfaceIntersectCorrectAlgorithm()
+
+    def initAlgorithm(self, config):
+        self.addParameter(QgsProcessingParameterRasterLayer(self.TOP_SURFACE,
+                                          self.tr('Верхняя поверхность')))
+        self.addParameter(QgsProcessingParameterRasterLayer(self.BOTTOM_SURFACE,
+                                          self.tr('Нижняя поверхность')))
+
+        self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT_SURFACE, self.tr('Результат')))
 
 
-    def processAlgorithm(self, progress):
-        output = self.getOutputValue(self.OUTPUT_SURFACE)
-        topSurfaceName = self.getParameterValue(self.TOP_SURFACE)
-        bottomSurfaceName = self.getParameterValue(self.BOTTOM_SURFACE)
+    def processAlgorithm(self, parameters, context, progress):
+        output = self.parameterAsOutputLayer(parameters, self.OUTPUT_SURFACE, context)
 
-
-        bottomRaster = dataobjects.getObjectFromUri(bottomSurfaceName)
-        topRaster = dataobjects.getObjectFromUri(topSurfaceName)
+        bottomRaster = self.parameterAsRasterLayer(parameters, self.BOTTOM_SURFACE, context)
+        topRaster = self.parameterAsRasterLayer(parameters, self.TOP_SURFACE, context)
 
         entries = []
         ras = QgsRasterCalculatorEntry()
@@ -69,4 +80,6 @@ class TigSurfaceIntersectCorrectAlgorithm(GeoAlgorithm):
         calc = QgsRasterCalculator('ras@1 + (ras1@1 - ras@1) * ((ras1@1 - ras@1) >= 0)', output, 'GTiff', bottomRaster.extent(),
                                    bottomRaster.width(), bottomRaster.height(), entries)
         calc.processCalculation()
+
+        return {self.OUTPUT_SURFACE: output}
 

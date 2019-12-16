@@ -12,37 +12,24 @@ __revision__ = '$Format:%H$'
 import tempfile
 import os
 
-from PyQt4.QtCore import QSettings, QProcess, QVariant
-from qgis.utils import iface
+from qgis.PyQt.QtCore import QCoreApplication, QVariant
+from qgis.analysis import QgsRasterCalculatorEntry, QgsRasterCalculator
 from qgis.core import *
+from qgis.core import (QgsProcessing,
+                       QgsFeatureSink,
+                       QgsProcessingAlgorithm,
+                       QgsProcessingParameterFeatureSource,
+                       QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterVectorLayer,
+                       QgsProcessingParameterRasterDestination,
+                       QgsProcessingParameterField,
+                       QgsProcessingParameterExtent,
+                       QgsProcessingParameterNumber,
+                       QgsProcessingParameterVectorDestination,
+                       QgsProcessingParameterFileDestination)
 
-from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.parameters import ParameterMultipleInput
-from processing.core.parameters import ParameterRaster
-from processing.core.parameters import ParameterVector
-from processing.core.parameters import ParameterTableField
-from processing.core.outputs import OutputVector
-from processing.tools import dataobjects, vector
-from processing.tools.vector import VectorWriter
 
-
-class TigUpdatePointLocationAlgorithm(GeoAlgorithm):
-    """This is an example algorithm that takes a vector layer and
-    creates a new one just with just those features of the input
-    layer that are selected.
-
-    It is meant to be used as an example of how to create your own
-    algorithms and explain methods and variables used to do it. An
-    algorithm like this will be available in all elements, and there
-    is not need for additional work.
-
-    All Processing algorithms should extend the GeoAlgorithm class.
-    """
-
-    # Constants used to refer to parameters and outputs. They will be
-    # used when calling the algorithm from another algorithm, or when
-    # calling from the QGIS console.
-
+class TigUpdatePointLocationAlgorithm(QgsProcessingAlgorithm):
     LAYER_A="LAYER_A"
     FIELD_TO_JOIN_A="FIELD_A"
     LAYER_B="LAYER_B"
@@ -51,69 +38,75 @@ class TigUpdatePointLocationAlgorithm(GeoAlgorithm):
 ##Field_for_join_to=optional field Layer_to_update
 ##Field_for_join_from=optional field Layer_from_update
 
+    def tr(self, string):
+        return QCoreApplication.translate('Processing', string)
 
-    def defineCharacteristics(self):
-        """Here we define the inputs and output of the algorithm, along
-        with some other properties.
-        """
+    def name(self):
+        return 'TigUpdatePointLocationAlgorithm'
 
-        # The name that the user will see in the toolbox
-        self.name = self.tr(u'Update well location')
-        self.i18n_name = u'Обновление расположения скважин'
+    def groupId(self):
+        return 'PUMAtools'
 
-        # The branch of the toolbox under which the algorithm will appear
-        self.group = self.tr(u'Tools')
+    def group(self):
+        return self.tr('Инструменты')
 
+    def displayName(self):
+        return self.tr(u'Обновление расположения скважин')
+
+    def createInstance(self):
+        return TigUpdatePointLocationAlgorithm()
+
+    def initAlgorithm(self, config):
         # We add the input vector layer. It can have any kind of geometry
         # It is a mandatory (not optional) one, hence the False argument
         self.addParameter(
-            ParameterVector(
+            QgsProcessingParameterVectorLayer(
                 self.LAYER_A  #layer id
                 , self.tr('Layer to update') #display text
-                , [ParameterVector.VECTOR_TYPE_POINT] #layer types
+                , [QgsProcessing.TypeVectorPoint] #layer types
+                , ''
                 , False #[is Optional?]
                 ))
         
         self.addParameter(
-            ParameterTableField(
+            QgsProcessingParameterField(
                 self.FIELD_TO_JOIN_A #id
                 , self.tr('Field for join layers in A(default well_id)') #display text
+                , ''
                 , self.LAYER_A #field layer
-                , ParameterTableField.DATA_TYPE_ANY
-                , True #[is Optional?]
+                , QgsProcessingParameterField.Any
+                , optional=True #[is Optional?]
                 ))
 
         self.addParameter(
-            ParameterVector(
+            QgsProcessingParameterVectorLayer(
                 self.LAYER_B  #layer id
                 , self.tr('Layer from update') #display text
-                , [ParameterVector.VECTOR_TYPE_POINT] #layer types
+                , [QgsProcessing.TypeVectorPoint] #layer types
+                , ''
                 , False #[is Optional?]
                 ))
         
         self.addParameter(
-            ParameterTableField(
+            QgsProcessingParameterField(
                 self.FIELD_TO_JOIN_B #id
                 , self.tr('Field to for layers in B(default well_id)') #display text
+                , ''
                 , self.LAYER_B #field layer
-                , ParameterTableField.DATA_TYPE_ANY
-                , True #[is Optional?]
+                , QgsProcessingParameterField.Any
+                , optional=True #[is Optional?]
                 ))
 
-    def processAlgorithm(self, progress):
+    def processAlgorithm(self, parameters, context, feedback):
         """Here is where the processing itself takes place."""
 
         # The first thing to do is retrieve the values of the parameters
         # entered by the user
-        Layer_to_update = self.getParameterValue(self.LAYER_A)
-        Layer_from_update = self.getParameterValue(self.LAYER_B)
-        Field_for_join_to = self.getParameterValue(self.FIELD_TO_JOIN_A)
-        Field_for_join_from = self.getParameterValue(self.FIELD_TO_JOIN_B)
+        Layer_to_update = self.parameterAsVectorLayer(parameters, self.LAYER_A, context)
+        Layer_from_update = self.parameterAsVectorLayer(parameters, self.LAYER_B, context)
+        Field_for_join_to = self.parameterAsString(parameters, self.FIELD_TO_JOIN_A, context)
+        Field_for_join_from = self.parameterAsString(parameters, self.FIELD_TO_JOIN_B, context)
 
-        #--- create virtual field with geometry
-        Layer_from_update=dataobjects.getObject(Layer_from_update)  #processing.getObjectFromUri()
-        Layer_to_update=dataobjects.getObject(Layer_to_update)      #processing.getObjectFromUri()
-        
         Field_for_join_from='well_id' if Field_for_join_from is None else Field_for_join_from
         Field_for_join_to='well_id' if Field_for_join_to is None else Field_for_join_to
         #Layer_from_update.startEditing()
@@ -129,7 +122,7 @@ class TigUpdatePointLocationAlgorithm(GeoAlgorithm):
         #--- remove layers join
         Layer_to_update.removeJoin( Layer_from_update.id() )
         #--- join layers. Join only virtual field  'upd_coord_geometry'
-        joinObject = QgsVectorJoinInfo()
+        joinObject = QgsVectorLayerJoinInfo()
         joinObject.joinLayerId = Layer_from_update.id()
         joinObject.joinFieldName = Field_for_join_from
         joinObject.targetFieldName = Field_for_join_to
@@ -141,11 +134,17 @@ class TigUpdatePointLocationAlgorithm(GeoAlgorithm):
         filter_exp=Layer_to_update.subsetString()
         Layer_to_update.setSubsetString('')
         #--- update geometry from field 'upd_coord_geometry'
+
+        cntx = context.expressionContext()
+        cntx.setFields( Layer_to_update.fields())
+
         Layer_to_update.startEditing()
         e = QgsExpression( 'if( geom_from_wkt(  "upd_coord_geometry" )  IS  None, $geometry ,geom_from_wkt(  "upd_coord_geometry" ))' )
-        e.prepare( Layer_to_update.pendingFields() )
+        e.prepare(cntx)
         for feature in Layer_to_update.getFeatures():
-            Layer_to_update.dataProvider().changeGeometryValues({feature.id(): e.evaluate( feature )})
+            cntx.setFeature(feature)
+            val = e.evaluate(cntx)
+            Layer_to_update.dataProvider().changeGeometryValues({feature.id(): val})
         Layer_to_update.beginEditCommand("edit")
         Layer_to_update.endEditCommand()
         Layer_to_update.commitChanges()
@@ -153,8 +152,10 @@ class TigUpdatePointLocationAlgorithm(GeoAlgorithm):
         Layer_to_update.setSubsetString(filter_exp)
         #--- remove layers join
         Layer_to_update.removeJoin( Layer_from_update.id() )
+
+        return {}
         
-                    
+    @staticmethod
     def script():
         return """
 ##Layer_to_update=vector point
@@ -200,7 +201,7 @@ Layer_to_update.setSubsetString('')
 #--- update geometry from field 'upd_coord_geometry'
 Layer_to_update.startEditing()
 e = QgsExpression( 'if( geom_from_wkt(  "upd_coord_geometry" )  IS  None, $geometry ,geom_from_wkt(  "upd_coord_geometry" ))' )
-e.prepare( Layer_to_update.pendingFields() )
+e.prepare( Layer_to_update.fields() )
 for feature in Layer_to_update.getFeatures():
     Layer_to_update.dataProvider().changeGeometryValues({feature.id(): e.evaluate( feature )})
 Layer_to_update.beginEditCommand("edit")
