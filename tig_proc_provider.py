@@ -153,7 +153,7 @@ class TigSurfitProvider(QgsProcessingProvider):
         cleared before calling this method.
         """
         for alg in self.alglist:
-            self.addAlgorithm(alg)
+            self.addAlgorithm(alg.createInstance())
 
     def longName(self):
         """
