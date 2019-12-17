@@ -12,41 +12,33 @@ __revision__ = '$Format:%H$'
 import tempfile
 import os
 
-from PyQt4.QtCore import QSettings, QProcess, QVariant
+from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.utils import iface
 from qgis.core import *
-
-from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.parameters import ParameterMultipleInput
-from processing.core.parameters import ParameterRaster
-from processing.core.parameters import ParameterVector
-from processing.core.parameters import ParameterTableField
-from processing.core.parameters import ParameterString
-from processing.core.parameters import ParameterFile
-from processing.core.outputs import OutputVector
-from processing.tools import dataobjects, vector
-from processing.tools.vector import VectorWriter
-
-
+from qgis.core import (QgsProcessing,
+                       QgsFeatureSink,
+                       QgsProcessingAlgorithm,
+                       QgsProcessingParameterFeatureSource,
+                       QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterVectorLayer,
+                       QgsProcessingParameterRasterDestination,
+                       QgsProcessingParameterField,
+                       QgsProcessingParameterExtent,
+                       QgsProcessingParameterNumber,
+                       QgsProcessingParameterString,
+                       QgsProcessingParameterBoolean,
+                       QgsProcessingParameterFile,
+                       QgsProcessingParameterVectorDestination,
+                       QgsProcessingParameterFileDestination,
+                       QgsExpressionContextUtils)
 
 #===============================================================================
 # 
 #===============================================================================
-class TigSetMapVariable(GeoAlgorithm):
-    """This is an example algorithm that takes a vector layer and
-    creates a new one just with just those features of the input
-    layer that are selected.
+class TigSetMapVariable(QgsProcessingAlgorithm):
+    """
 
-    It is meant to be used as an example of how to create your own
-    algorithms and explain methods and variables used to do it. An
-    algorithm like this will be available in all elements, and there
-    is not need for additional work.
-
-    All Processing algorithms should extend the GeoAlgorithm class.
-    
-    @see: https://www.mdpi.com/2220-9964/4/4/2219/htm
-
-    @var var: 
+    @var var:
         00    str: PROP_1    
         01    str: __doc__    
         02    str: __init__    
@@ -118,10 +110,10 @@ class TigSetMapVariable(GeoAlgorithm):
     # calling from the QGIS console.
 
     PROPS=[
-        ["company_name",u'Имя компании',u''    ,ParameterString]
-        ,["project"    ,u'Имя проекта',u''     ,ParameterString]
-        ,["map_date"   ,u'Дата для штампа',u'' ,ParameterString]
-        ,["emblem"     ,u'Файл с эмблемой',u'' ,ParameterString]
+        ["company_name",u'Имя компании',    u'', 'String']
+        ,["project"    ,u'Имя проекта',     u'', 'String']
+        ,["map_date"   ,u'Дата для штампа', u'', 'String']
+        ,["emblem"     ,u'Файл с эмблемой', u'', 'File']
         ]
 
     #QgsExpressionContextUtils.projectScope().variable(PROP_1)
@@ -129,62 +121,62 @@ class TigSetMapVariable(GeoAlgorithm):
     #===========================================================================
     # 
     #===========================================================================
-    def defineCharacteristics(self):
-        """Here we define the inputs and output of the algorithm, along
-        with some other properties.
-        """
-        # The name that the user will see in the toolbox
-        self.name = self.tr(u'Set map variable')
-        self.i18n_name = u'Задание переменных карты'
+    def tr(self, string):
+        return QCoreApplication.translate('Processing', string)
 
-        # The branch of the toolbox under which the algorithm will appear
-        self.group = self.tr(u'Tools')
+    def name(self):
+        return 'TigSetMapVariable'
 
+    def groupId(self):
+        return 'PUMAtools'
+
+    def group(self):
+        return self.tr('Инструменты')
+
+    def displayName(self):
+        return self.tr(u'Задание переменных карты')
+
+    def createInstance(self):
+        return TigSetMapVariable()
+
+    def initAlgorithm(self, config):
         for [name,desc,default,paramtype] in self.PROPS:
-            if paramtype==ParameterString:
+            try:
+                defaultValue = QgsExpressionContextUtils.projectScope(QgsProject.instance()).variable(name)
+            except:
+                defaultValue = default
+            if paramtype=='String':
+
                 self.addParameter(
-                    ParameterString( #name='', description='', default=None, multiline=False,  optional=False, evaluateExpressions=False
+                    QgsProcessingParameterString( #name='', description='', default=None, multiline=False,  optional=False, evaluateExpressions=False
                         name
                         , desc
-                        , default
+                        , defaultValue
                         , False # is big text?
                         , False
                         #, False #for 2.14
                         ))
-            elif paramtype==ParameterFile:
+            elif paramtype=='File':
                 self.addParameter(
-                    ParameterFile(
+                    QgsProcessingParameterFile(
                         name=name
                         , description=desc
-                        , isFolder=False
+                        , defaultValue=defaultValue
                         , optional=True
-                        , ext=None
                         ))
             else:
                 raise Exception('Unknown type parameter')
-    #===================================================================
-    # 
-    #===================================================================
-    def checkBeforeOpeningParametersDialog(self):
-        # self.parameters[0]
-        # ESCAPED_NEWLINE', 'NEWLINE', '__doc__', '__init__', '__module__', '__str__', 'default', 'description'
-        #'evaluateExpressions', 'getAsScriptCode', 'getValueAsCommandLineParameter', 'hidden', 'isAdvanced', 'multiline', 'name', 'optional', 'setDefaultValue', 'setValue', 'todict', 'tr', 'typeName', 'value'
-        #param.setValue(QgsExpressionContextUtils.projectScope().variable(self.PROP_1))
-        for [name,desc,default,paramtype] in self.PROPS:
-                param=self.getParameterFromName(name)   
-                if paramtype==ParameterString:
-                    param.default=QgsExpressionContextUtils.projectScope().variable(name)
-                else:
-                    pass
-    
+
+
     #===========================================================================
     # 
     #===========================================================================
-    def processAlgorithm(self, progress):
+    def processAlgorithm(self, parameters, context, feedback):
         """Here is where the processing itself takes place."""
         for [name,desc,default,paramtype] in self.PROPS:
-            QgsExpressionContextUtils.setProjectVariable(name, self.getParameterValue(name)  )
-        pass
+            QgsExpressionContextUtils.setProjectVariable(QgsProject.instance(), name,
+                                                         self.parameterAsString(parameters, name, context))
+        return {}
   
         
   

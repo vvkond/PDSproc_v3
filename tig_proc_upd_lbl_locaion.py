@@ -256,7 +256,7 @@ class TigUpdateLabelLocationAlgorithm(QgsProcessingAlgorithm):
         _copyfield_lblyoff_from  = self.parameterAsString(parameters, self.FIELD_LBLYOFF_FROM, context)
         _copyfield_lbloff_from   = self.parameterAsString(parameters, self.FIELD_LBLOFF_FROM, context)
         
-        _is_remove_join          = self.parameterAsBoolean(parameters, self.IS_REMOVE_JOIN, context)
+        _is_remove_join          = self.parameterAsBool(parameters, self.IS_REMOVE_JOIN, context)
 
         _joinfield__from='well_id' if _joinfield__from is None else _joinfield__from
         _joinfield__to=  'well_id' if _joinfield__to   is None else _joinfield__to

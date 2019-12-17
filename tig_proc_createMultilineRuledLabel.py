@@ -12,26 +12,28 @@ __revision__ = '$Format:%H$'
 import tempfile
 import os
 
-from PyQt4.QtCore import QSettings, QProcess, QVariant
+from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.utils import iface
 from qgis.core import *
-
-from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.parameters import ParameterMultipleInput
-from processing.core.parameters import ParameterRaster
-from processing.core.parameters import ParameterVector
-from processing.core.parameters import ParameterTableField
-from processing.core.outputs import OutputVector
-from processing.tools import dataobjects, vector
-from processing.tools.vector import VectorWriter
-
-
-
+from qgis.core import (QgsProcessing,
+                       QgsFeatureSink,
+                       QgsProcessingAlgorithm,
+                       QgsProcessingParameterFeatureSource,
+                       QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterVectorLayer,
+                       QgsProcessingParameterRasterDestination,
+                       QgsProcessingParameterField,
+                       QgsProcessingParameterExtent,
+                       QgsProcessingParameterNumber,
+                       QgsProcessingParameterString,
+                       QgsProcessingParameterBoolean,
+                       QgsProcessingParameterVectorDestination,
+                       QgsProcessingParameterFileDestination)
 
 #===============================================================================
 # 
 #===============================================================================
-class TigCreateMultilineRuleLabelAlgorithm(GeoAlgorithm):
+class TigCreateMultilineRuleLabelAlgorithm(QgsProcessingAlgorithm):
     """
     All Processing algorithms should extend the GeoAlgorithm class.
     """
@@ -104,78 +106,74 @@ class TigCreateMultilineRuleLabelAlgorithm(GeoAlgorithm):
     #===========================================================================
     # 
     #===========================================================================
-    def defineCharacteristics(self):
-        """Here we define the inputs and output of the algorithm, along
-        with some other properties.
-        
-        In console try:
-            from processing.core import parameters 
-            dir(parameters) 
-            
-        https://gis.stackexchange.com/questions/156800/custom-qgis-processing-tool-fails-to-copy-features
-        https://github.com/qgis/QGIS/blob/master/python/plugins/processing/core/parameters.py
-        """
+    def tr(self, string):
+        return QCoreApplication.translate('Processing', string)
 
-        # The name that the user will see in the toolbox
-        self.name = self.tr(u'Create multiline ruled label')
-        self.i18n_name = u'Создание многострочной подписи на оснвое правил'
+    def name(self):
+        return 'TigCreateMultilineRuleLabelAlgorithm'
 
-        # The branch of the toolbox under which the algorithm will appear
-        self.group = self.tr(u'Tools')
+    def groupId(self):
+        return 'PUMAtools'
 
-        # We add the input vector layer. It can have any kind of geometry
-        # It is a mandatory (not optional) one, hence the False argument
-        
+    def group(self):
+        return self.tr('Инструменты')
+
+    def displayName(self):
+        return self.tr(u'Создание многострочной подписи на основе правил')
+
+    def createInstance(self):
+        return TigCreateMultilineRuleLabelAlgorithm()
+
+    def initAlgorithm(self, config):
+
         #---------------LAYER A
         self.addParameter(
-            ParameterVector(
+            QgsProcessingParameterVectorLayer(
                 self.LAYER_TO  #layer id
                 , self.tr('Layer for labeled') #display text
-                , [ParameterVector.VECTOR_TYPE_POINT,ParameterVector.VECTOR_TYPE_LINE] #layer types
+                , [QgsProcessing.TypeVectorPoint, QgsProcessing.TypeVectorLine] #layer types
+                , ''
                 , False #[is Optional?]
                 ))
         for idx,id in enumerate([self.FIELD_1,self.FIELD_2,self.FIELD_3,self.FIELD_4,self.FIELD_5,self.FIELD_6]):
             self.addParameter(
-                ParameterTableField(
+                QgsProcessingParameterField(
                     id
                     , self.tr('Field {} for label ').format(idx) #display text
+                    , ''
                     , self.LAYER_TO #field layer
-                    , ParameterTableField.DATA_TYPE_ANY
-                    , True #[is Optional?]
+                    , QgsProcessingParameterField.Any
+                    , optional=True #[is Optional?]
                     ))
         
     #===========================================================================
     # 
     #===========================================================================
-    def processAlgorithm(self, progress):
+    def processAlgorithm(self, parameters, context, progress):
         """Here is where the processing itself takes place."""
-        progress.setText('<b>Start</b>')
+        progress.pushInfo('<b>Start</b>')
         import random
         from tempfile import NamedTemporaryFile
         
         
-        progress.setText('Read settings')
+        progress.pushInfo('Read settings')
         # The first thing to do is retrieve the values of the parameters
         # entered by the user
-        Layer_to_update     = self.getParameterValue(self.LAYER_TO)
-        _label_fields_=[ self.getParameterValue(id) for id in [self.FIELD_1,self.FIELD_2,self.FIELD_3,self.FIELD_4,self.FIELD_5,self.FIELD_6]]
+        Layer_to_update     = self.parameterAsVectorLayer(parameters, self.LAYER_TO, context)
+        _label_fields_=[ self.parameterAsString(parameters, id, context) for id in [self.FIELD_1,self.FIELD_2,self.FIELD_3,self.FIELD_4,self.FIELD_5,self.FIELD_6]]
         _label_fields_=[x for x in _label_fields_ if x is not None]
         if len(_label_fields_)<1:
-            progress.setText('No fields selected.Terminated')
+            progress.pushInfo('No fields selected.Terminated')
             return
-
-        #--- create virtual field with geometry
-        Layer_to_update=dataobjects.getObject(Layer_to_update)      #processing.getObjectFromUri()
-
 
         #=======================================================================
         #     #---QGIS 3 API version. Added QgsRuleBasedLabeling
         # root = QgsRuleBasedLabeling.Rule(QgsPalLayerSettings())
         #=======================================================================
-        progress.setText('<b>Generate xml for</b>')
+        progress.pushInfo('<b>Generate xml for</b>')
         rules_xml=""
         for idx,field in enumerate(_label_fields_):
-            progress.setText('\t{}'.format(field))
+            progress.pushInfo('\t{}'.format(field))
             rule_xml=self.TMPL_RULE.format(_name_='Line_{}'.format(idx)
                                            ,_filter_=''
                                            , _rnd12_=int(random.random()*1000000000000)#random.randint(1000000000000,999999999999)
@@ -205,18 +203,19 @@ class TigCreateMultilineRuleLabelAlgorithm(GeoAlgorithm):
         rules_xml=self.TMPL_RULES.format(_rule_=rules_xml
                                          ,_rnd12_=int(random.random()*1000000000000)#random.randint(1000000000000,999999999999)
                                          )
-        progress.setText('<b>Store xml as style</b>')
-        f = NamedTemporaryFile(delete=False)
+        progress.pushInfo('<b>Store xml as style</b>')
+        f = NamedTemporaryFile(mode='w', delete=False)
         f.write(rules_xml)
         f.flush()
         f.close()      
-        progress.setText('<b>Loading style {}</b>'.format(f.name))
+        progress.pushInfo('<b>Loading style {}</b>'.format(f.name))
         #editLayerStyles=Layer_to_update.styleManager()
         #editLayerStyles.addStyle( name, editLayerStyles.style(editLayerStyles.styles()[0]) ) 
         #editLayerStyles.setCurrentStyle(name)
         Layer_to_update.loadNamedStyle(f.name)        
         Layer_to_update.triggerRepaint()
-        progress.setText('<b>End</b>')
-        
+        progress.pushInfo('<b>End</b>')
+
+        return {}
                     
         

@@ -12,24 +12,28 @@ __revision__ = '$Format:%H$'
 import tempfile
 import os
 
-from PyQt4.QtCore import QSettings, QProcess, QVariant
+from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.utils import iface
 from qgis.core import *
-
-from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.parameters import ParameterMultipleInput
-from processing.core.parameters import ParameterRaster
-from processing.core.parameters import ParameterVector
-from processing.core.parameters import ParameterTableField
-from processing.core.parameters import ParameterBoolean
-from processing.core.outputs import OutputVector
-from processing.tools import dataobjects, vector
-from processing.tools.vector import VectorWriter
+from qgis.core import (QgsProcessing,
+                       QgsFeatureSink,
+                       QgsProcessingAlgorithm,
+                       QgsProcessingParameterFeatureSource,
+                       QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterVectorLayer,
+                       QgsProcessingParameterRasterDestination,
+                       QgsProcessingParameterField,
+                       QgsProcessingParameterExtent,
+                       QgsProcessingParameterNumber,
+                       QgsProcessingParameterString,
+                       QgsProcessingParameterBoolean,
+                       QgsProcessingParameterVectorDestination,
+                       QgsProcessingParameterFileDestination)
 
 #===============================================================================
 # 
 #===============================================================================
-class TigUpdateTableFieldAlgorithm(GeoAlgorithm):
+class TigUpdateTableFieldAlgorithm(QgsProcessingAlgorithm):
     """
     All Processing algorithms should extend the GeoAlgorithm class.
     """
@@ -55,104 +59,110 @@ class TigUpdateTableFieldAlgorithm(GeoAlgorithm):
     #===========================================================================
     # 
     #===========================================================================
-    def defineCharacteristics(self):
-        """Here we define the inputs and output of the algorithm, along
-        with some other properties.
-        
-        In console try:
-            from processing.core import parameters 
-            dir(parameters) 
-            
-        https://gis.stackexchange.com/questions/156800/custom-qgis-processing-tool-fails-to-copy-features
-        https://github.com/qgis/QGIS/blob/master/python/plugins/processing/core/parameters.py
-        """
+    def tr(self, string):
+        return QCoreApplication.translate('Processing', string)
 
-        # The name that the user will see in the toolbox
-        self.name = self.tr(u'Update table field')
-        self.i18n_name = u'Обновление значений таблицы'
+    def name(self):
+        return 'TigUpdateTableFieldAlgorithm'
 
-        # The branch of the toolbox under which the algorithm will appear
-        self.group = self.tr(u'Tools')
+    def groupId(self):
+        return 'PUMAtools'
 
-        # We add the input vector layer. It can have any kind of geometry
-        # It is a mandatory (not optional) one, hence the False argument
-        
+    def group(self):
+        return self.tr('Инструменты')
+
+    def displayName(self):
+        return self.tr(u'Обновление значений таблицы')
+
+    def createInstance(self):
+        return TigUpdateTableFieldAlgorithm()
+
+    def initAlgorithm(self, config):
         #---------------LAYER A
         self.addParameter(
-            ParameterVector(
+            QgsProcessingParameterVectorLayer(
                 self.LAYER_TO  #layer id
                 , self.tr('Layer to update') #display text
-                , [ParameterVector.VECTOR_TYPE_POINT,ParameterVector.VECTOR_TYPE_LINE] #layer types
+                , [QgsProcessing.TypeVectorPoint, QgsProcessing.TypeVectorLine] #layer types
+                , ''
                 , False #[is Optional?]
                 ))
         
         self.addParameter(
-            ParameterTableField(
+            QgsProcessingParameterField(
                 self.FIELD_JOIN_TO #id
                 , self.tr('Field for join layers in A(default well_id)') #display text
+                , ''
                 , self.LAYER_TO #field layer
-                , ParameterTableField.DATA_TYPE_ANY
-                , True #[is Optional?]
+                , QgsProcessingParameterField.Any
+                , optional=True #[is Optional?]
                 ))
         #---------------LAYER B
         self.addParameter(
-            ParameterVector(
+            QgsProcessingParameterVectorLayer(
                 self.LAYER_FROM  #layer id
                 , self.tr('Layer from update') #display text
-                , [ParameterVector.VECTOR_TYPE_POINT,ParameterVector.VECTOR_TYPE_LINE] #layer types
+                , [QgsProcessing.TypeVectorPoint, QgsProcessing.TypeVectorLine] #layer types
+                , ''
                 , False #[is Optional?]
                 ))
         
         self.addParameter(
-            ParameterTableField(
+            QgsProcessingParameterField(
                 self.FIELD_JOIN_FROM #id
                 , self.tr('Field for join layers in B(default well_id)') #display text
+                , ''
                 , self.LAYER_FROM #field layer
-                , ParameterTableField.DATA_TYPE_ANY
-                , True #[is Optional?]
+                , QgsProcessingParameterField.Any
+                , optional=True #[is Optional?]
                 ))
 
         #---------------
         self.addParameter(
-            ParameterTableField(
+            QgsProcessingParameterField(
                 self.FIELD_1_TO #id
                 , self.tr('Field to update 1') #display text
+                , ''
                 , self.LAYER_TO #field layer
-                , ParameterTableField.DATA_TYPE_ANY
-                , False #[is Optional?]
+                , QgsProcessingParameterField.Any
+                , optional=False #[is Optional?]
                 ))
         self.addParameter(
-            ParameterTableField(
+            QgsProcessingParameterField(
                 self.FIELD_1_FROM #id
                 , self.tr('Field from update 1') #display text
+                , ''
                 , self.LAYER_FROM #field layer
-                , ParameterTableField.DATA_TYPE_ANY
-                , False #[is Optional?]
+                , QgsProcessingParameterField.Any
+                , optional=False #[is Optional?]
                 ))
 
 
         self.addParameter(
-            ParameterTableField(
+            QgsProcessingParameterField(
                 self.FIELD_2_TO #id
                 , self.tr('Field to update 2') #display text
+                , ''
                 , self.LAYER_TO #field layer
-                , ParameterTableField.DATA_TYPE_ANY
-                , True #[is Optional?]
+                , QgsProcessingParameterField.Any
+                , optional=True #[is Optional?]
                 ))
         self.addParameter(
-            ParameterTableField(
+            QgsProcessingParameterField(
                 self.FIELD_2_FROM #id
                 , self.tr('Field from update 2') #display text
+                , ''
                 , self.LAYER_FROM #field layer
-                , ParameterTableField.DATA_TYPE_ANY
-                , True #[is Optional?]
+                , QgsProcessingParameterField.Any
+                , optional=True #[is Optional?]
                 ))
         
         #---------------
         self.addParameter(
-            ParameterBoolean(
+            QgsProcessingParameterBoolean(
                 self.IS_SKEEP_NONE #id
                 , self.tr('Skeep None values?') #display text
+                , ''
                 , True #default
                 ))
  
@@ -160,31 +170,26 @@ class TigUpdateTableFieldAlgorithm(GeoAlgorithm):
     #===========================================================================
     # 
     #===========================================================================
-    def processAlgorithm(self, progress):
+    def processAlgorithm(self, parameters, context, progress):
         """Here is where the processing itself takes place."""
-        progress.setText('<b>Start</b>')
-        
-        
-        progress.setText('Read settings')
+        progress.pushInfo('<b>Start</b>')
+
+        progress.pushInfo('Read settings')
         # The first thing to do is retrieve the values of the parameters
         # entered by the user
-        Layer_to_update     = self.getParameterValue(self.LAYER_TO)
-        Layer_from_update   = self.getParameterValue(self.LAYER_FROM)
+        Layer_to_update     = self.parameterAsVectorLayer(parameters, self.LAYER_TO, context)
+        Layer_from_update   = self.parameterAsVectorLayer(parameters, self.LAYER_FROM, context)
         
-        _joinfield__to   = self.getParameterValue(self.FIELD_JOIN_TO)
-        _joinfield__from = self.getParameterValue(self.FIELD_JOIN_FROM)
+        _joinfield__to   = self.parameterAsString(parameters, self.FIELD_JOIN_TO, context)
+        _joinfield__from = self.parameterAsString(parameters, self.FIELD_JOIN_FROM, context)
         
-        _copyfield_1_to       = self.getParameterValue(self.FIELD_1_TO)
-        _copyfield_2_to       = self.getParameterValue(self.FIELD_2_TO)
+        _copyfield_1_to       = self.parameterAsString(parameters, self.FIELD_1_TO, context)
+        _copyfield_2_to       = self.parameterAsString(parameters, self.FIELD_2_TO, context)
         
-        _copyfield_1_from     = self.getParameterValue(self.FIELD_1_FROM)
-        _copyfield_2_from     = self.getParameterValue(self.FIELD_2_FROM)
+        _copyfield_1_from     = self.parameterAsString(parameters, self.FIELD_1_FROM, context)
+        _copyfield_2_from     = self.parameterAsString(parameters, self.FIELD_2_FROM, context)
         
-        _is_skeep_none       = self.getParameterValue(self.IS_SKEEP_NONE)
-
-        #--- create virtual field with geometry
-        Layer_from_update=dataobjects.getObject(Layer_from_update)  #processing.getObjectFromUri()
-        Layer_to_update=dataobjects.getObject(Layer_to_update)      #processing.getObjectFromUri()
+        _is_skeep_none       = self.parameterAsBool(parameters, self.IS_SKEEP_NONE, context)
         
         _joinfield__from='well_id' if _joinfield__from is None else _joinfield__from
         _joinfield__to=  'well_id' if _joinfield__to   is None else _joinfield__to
@@ -192,10 +197,10 @@ class TigUpdateTableFieldAlgorithm(GeoAlgorithm):
         field_to_upd=[[_copyfield_1_from ,_copyfield_1_to ] ]
         prefix='upd_fld_'
         if _copyfield_2_to is None or _copyfield_2_from is None:
-            progress.setText('Update only 1 field')
+            progress.pushInfo('Update only 1 field')
         else:
             field_to_upd.append([_copyfield_2_from ,_copyfield_2_to ] )
-            progress.setText('Update 2 fields')
+            progress.pushInfo('Update 2 fields')
             
         #Layer_from_update.startEditing()
         #cX = QgsField( '_x', QVariant.Double  )
@@ -208,11 +213,11 @@ class TigUpdateTableFieldAlgorithm(GeoAlgorithm):
         #Layer_from_update.commitChanges()
         
         #--- remove layers join
-        progress.setText('Try remove old join <b>{}</b> -> <b>{}</b>'.format(Layer_to_update.id(),Layer_from_update.id()))
+        progress.pushInfo('Try remove old join <b>{}</b> -> <b>{}</b>'.format(Layer_to_update.id(),Layer_from_update.id()))
         Layer_to_update.removeJoin( Layer_from_update.id() )
         #--- join layers. Join only virtual field  'upd_coord_geometry'
-        progress.setText('Join: \n\t{} \n\t-> \n\t{}'.format(Layer_to_update.id(),Layer_from_update.id()))
-        joinObject = QgsVectorJoinInfo()
+        progress.pushInfo('Join: \n\t{} \n\t-> \n\t{}'.format(Layer_to_update.id(),Layer_from_update.id()))
+        joinObject = QgsVectorLayerJoinInfo()
         joinObject.joinLayerId = Layer_from_update.id()
         joinObject.joinFieldName = _joinfield__from
         joinObject.targetFieldName = _joinfield__to
@@ -221,16 +226,19 @@ class TigUpdateTableFieldAlgorithm(GeoAlgorithm):
         joinObject.setJoinFieldNamesSubset([i[0] for i in field_to_upd])
         Layer_to_update.addJoin(joinObject)
         #---copy filter expression
-        progress.setText('Backup <b>{}</b> subsetString'.format(Layer_to_update.id()))
+        progress.pushInfo('Backup <b>{}</b> subsetString'.format(Layer_to_update.id()))
         filter_exp=Layer_to_update.subsetString()
         Layer_to_update.setSubsetString('')
         #--- update geometry from field 'upd_coord_geometry'
         prov=Layer_to_update.dataProvider()
         Layer_to_update.startEditing()
         #e = QgsExpression( 'if( geom_from_wkt(  "upd_coord_geometry" )  IS  None, $geometry ,geom_from_wkt(  "upd_coord_geometry" ))' )
+
+        cntx = context.expressionContext()
+        cntx.setFields(Layer_to_update.fields())
         
         for _copyfield_from,_copyfield_to in field_to_upd:
-            progress.setText('Copy values: \n\t{}.{} \n\t-> \n\t{}.{}'.format(Layer_from_update.id(), _copyfield_from, Layer_to_update.id() ,_copyfield_to))
+            progress.pushInfo('Copy values: \n\t{}.{} \n\t-> \n\t{}.{}'.format(Layer_from_update.id(), _copyfield_from, Layer_to_update.id() ,_copyfield_to))
             e=None
             if _is_skeep_none:
                 e = QgsExpression( 'if( "{prefix}{upd_from}" IS  None, "{upd_to}" ,"{prefix}{upd_from}")'.format( prefix=prefix
@@ -241,27 +249,31 @@ class TigUpdateTableFieldAlgorithm(GeoAlgorithm):
                 e = QgsExpression( '"{prefix}{upd_from}"'.format( prefix=prefix
                                                                   , upd_from=_copyfield_from
                                                                   ) ) #https://qgis.org/api/2.18/classQgsExpression.html
-                            
-            progress.setText('\tExpression is: <b>{}</b>'.format(e.expression()))
-            e.prepare( Layer_to_update.pendingFields() )
+
+            progress.pushInfo('\tExpression is: <b>{}</b>'.format(e.expression()))
+            e.prepare( cntx )
             fldIdx = prov.fieldNameIndex(_copyfield_to)
             to_upd={}
             for feature in Layer_to_update.getFeatures():  #https://qgis.org/api/classQgsFeature.html
-                to_upd[feature.id()]={ fldIdx : e.evaluate( feature ) }
+                cntx.setFeature(feature)
+                val = e.evaluate(cntx)
+                to_upd[feature.id()]={ fldIdx : val }
             prov.changeAttributeValues(to_upd)
                 #Layer_to_update.changeAttributeValue(feature.id(),fldIdx,e.evaluate( feature ))     
                 #Layer_to_update.dataProvider().changeGeometryValues({feature.id(): e.evaluate( feature )})  #https://qgis.org/api/2.18/classQgsVectorLayer.html
         #Layer_to_update.beginEditCommand("edit")
         #Layer_to_update.endEditCommand()
-        progress.setText('Commit changes')
+        progress.pushInfo('Commit changes')
         Layer_to_update.commitChanges()
         #--- restore filter expression
-        progress.setText('Restore subsetString to "{}"'.format(filter_exp))
+        progress.pushInfo('Restore subsetString to "{}"'.format(filter_exp))
         Layer_to_update.setSubsetString(filter_exp)
         #--- remove layers join
-        progress.setText('Remove join {}->{}'.format(Layer_to_update.id(),Layer_from_update.id()))
+        progress.pushInfo('Remove join {}->{}'.format(Layer_to_update.id(),Layer_from_update.id()))
         Layer_to_update.removeJoin( Layer_from_update.id() )
-        progress.setText('<b>End</b>')
+        progress.pushInfo('<b>End</b>')
+
+        return {}
         
                     
         
