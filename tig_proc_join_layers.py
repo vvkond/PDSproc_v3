@@ -12,24 +12,24 @@ __revision__ = '$Format:%H$'
 import tempfile
 import os
 
-from PyQt4.QtCore import QSettings, QProcess, QVariant
+from qgis.PyQt.QtCore import QCoreApplication, QSettings, QProcess, QVariant
 from qgis.utils import iface
 from qgis.core import *
-
-from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.parameters import ParameterMultipleInput
-from processing.core.parameters import ParameterRaster
-from processing.core.parameters import ParameterVector
-from processing.core.parameters import ParameterTableField,ParameterTableMultipleField
-from processing.core.parameters import ParameterBoolean,ParameterString
-from processing.core.outputs import OutputVector
-from processing.tools import dataobjects, vector
-from processing.tools.vector import VectorWriter
+from processing.tools.system import getTempFilename
+from qgis.core import (QgsProcessing,
+                       QgsFeatureSink,
+                       QgsProcessingAlgorithm,
+                       QgsProcessingParameterFeatureSource,
+                       QgsProcessingParameterRasterDestination,
+                       QgsProcessingParameterField,
+                       QgsProcessingParameterExtent,
+                       QgsProcessingParameterNumber,
+                       QgsProcessingParameterVectorLayer)
 
 #===============================================================================
 # 
 #===============================================================================
-class TigJoinLayersAlgorithm(GeoAlgorithm):
+class TigJoinLayersAlgorithm(QgsProcessingAlgorithm):
     """
     All Processing algorithms should extend the GeoAlgorithm class.
     """
@@ -55,75 +55,79 @@ class TigJoinLayersAlgorithm(GeoAlgorithm):
     #===========================================================================
     # 
     #===========================================================================
-    def defineCharacteristics(self):
-        """Here we define the inputs and output of the algorithm, along
-        with some other properties.
-        
-        In console try:
-            from processing.core import parameters 
-            dir(parameters) 
-            
-        https://gis.stackexchange.com/questions/156800/custom-qgis-processing-tool-fails-to-copy-features
-        https://github.com/qgis/QGIS/blob/master/python/plugins/processing/core/parameters.py
-        """
+    def tr(self, string):
+        return QCoreApplication.translate('Processing', string)
 
-        # The name that the user will see in the toolbox
-        self.name = self.tr(u'Join layers')
-        self.i18n_name = u'Создание связей'
+    def name(self):
+        return 'TigJoinLayersAlgorithm'
 
-        # The branch of the toolbox under which the algorithm will appear
-        self.group = self.tr(u'Tools')
+    def groupId(self):
+        return 'PUMAtools'
 
-        # We add the input vector layer. It can have any kind of geometry
-        # It is a mandatory (not optional) one, hence the False argument
-        
+    def group(self):
+        return self.tr('Инструменты')
+
+    def displayName(self):
+        return self.tr(u'Создание связей')
+
+    def createInstance(self):
+        return TigJoinLayersAlgorithm()
+
+    def initAlgorithm(self, config):
+
         #---------------LAYER A
         self.addParameter(
-            ParameterVector(
+            QgsProcessingParameterVectorLayer(
                 self.LAYER_TO  #layer id
                 , self.tr('Layer to update') #display text
-                , [ParameterVector.VECTOR_TYPE_POINT,ParameterVector.VECTOR_TYPE_LINE] #layer types
+                , [QgsProcessing.TypeVectorLine, QgsProcessing.TypeVectorPoint] #layer types
+                , ''
                 , False #[is Optional?]
                 ))
         
         self.addParameter(
-            ParameterTableField(
+            QgsProcessingParameterField(
                 self.FIELD_JOIN_TO #id
                 , self.tr('Field for join layers in A(default well_id)') #display text
+                , 'well_id'
                 , self.LAYER_TO #field layer
-                , ParameterTableField.DATA_TYPE_ANY
-                , True #[is Optional?]
+                , QgsProcessingParameterField.Any
+                , optional=True #[is Optional?]
                 ))
 
         #---------------LAYER B
         self.addParameter(
-            ParameterVector(
+            QgsProcessingParameterVectorLayer(
                 self.LAYER_FROM  #layer id
                 , self.tr('Layer from update') #display text
-                , [ParameterVector.VECTOR_TYPE_POINT,ParameterVector.VECTOR_TYPE_LINE] #layer types
+                , [QgsProcessing.TypeVectorLine, QgsProcessing.TypeVectorPoint] #layer types
+                , ''
                 , False #[is Optional?]
                 ))
         
         self.addParameter(
-            ParameterTableField(
+            QgsProcessingParameterField(
                 self.FIELD_JOIN_FROM #id
                 , self.tr('Field to for layers in B(default well_id)') #display text
+                , 'well_id'
                 , self.LAYER_FROM #field layer
-                , ParameterTableField.DATA_TYPE_ANY
-                , True #[is Optional?]
+                , QgsProcessingParameterField.Any
+                , optional=True #[is Optional?]
                 ))
 
         self.addParameter(
-            ParameterTableMultipleField(
+            QgsProcessingParameterField(
                 self.FIELDS_TO_JOIN #id
                 , self.tr('Fields to join') #display text
+                , ''
                 , self.LAYER_FROM #field layer
-                , ParameterTableField.DATA_TYPE_ANY
+                , QgsProcessingParameterField.Any
+                , True
                 , False #[is Optional?]
                 ))
         
         self.addParameter(
-            ParameterString( #name='', description='', default=None, multiline=False,  optional=False, evaluateExpressions=False
+            QgsProcessingParameterString( #name='', description='', default=None, multiline=False,  optional=False, evaluateExpressions=False
                 self.PREFIX    #name
                 , u'Префикс' #desc
                 , '_' #default
@@ -133,7 +137,7 @@ class TigJoinLayersAlgorithm(GeoAlgorithm):
                 ))   
         #---------------
         self.addParameter(
-            ParameterBoolean(
+            QgsProcessingParameterBoolean(
                 self.USE_CACHE #id
                 , self.tr('Save in cache?') #display text
                 , True #default
@@ -143,30 +147,29 @@ class TigJoinLayersAlgorithm(GeoAlgorithm):
     #===========================================================================
     # 
     #===========================================================================
-    def processAlgorithm(self, progress):
+    def processAlgorithm(self, parameters, context, progress):
         """Here is where the processing itself takes place."""
-        progress.setText('<b>Start</b>')
+        progress.pushInfo('<b>Start</b>')
         
         
-        progress.setText('Read settings')
+        progress.pushInfo('Read settings')
         # The first thing to do is retrieve the values of the parameters
         # entered by the user
-        Layer_to_update     = self.getParameterValue(self.LAYER_TO)
-        Layer_from_update   = self.getParameterValue(self.LAYER_FROM)
+        Layer_to_update     = self.parameterAsVectorLayer(parameters, self.LAYER_TO, context)
+        Layer_from_update   = self.parameterAsVectorLayer(parameters, self.LAYER_FROM, context)
         
-        _joinfield__to   = self.getParameterValue(self.FIELD_JOIN_TO)
-        _joinfield__from = self.getParameterValue(self.FIELD_JOIN_FROM)
+        _joinfield__to   = self.parameterAsString(parameters, self.FIELD_JOIN_TO, context)
+        _joinfield__from = self.parameterAsString(parameters, self.FIELD_JOIN_FROM, context)
         
-        _join_what_lst   = self.getParameterValue(self.FIELDS_TO_JOIN).split(";")
-        _prefix          = self.getParameterValue(self.PREFIX)
+        _join_what_lst   = self.parameterAsFields(parameters, self.FIELDS_TO_JOIN, context)
+        _prefix          = self.parameterAsString(parameters, self.PREFIX, context)
         
-        _use_cache       = self.getParameterValue(self.USE_CACHE)
+        _use_cache       = self.parameterAsBool(parameters, self.USE_CACHE, context)
         #--- create virtual field with geometry
-        Layer_from_update=dataobjects.getObject(Layer_from_update)  #processing.getObjectFromUri()
-        Layer_to_update=dataobjects.getObject(Layer_to_update)      #processing.getObjectFromUri()
-        
+
         _joinfield__from='well_id' if _joinfield__from is None else _joinfield__from
         _joinfield__to=  'well_id' if _joinfield__to   is None else _joinfield__to
+        progress.pushInfo('Fields: {},{}'.format(_joinfield__to, _joinfield__from))
         
         #Layer_from_update.startEditing()
         #cX = QgsField( '_x', QVariant.Double  )
@@ -179,18 +182,20 @@ class TigJoinLayersAlgorithm(GeoAlgorithm):
         #Layer_from_update.commitChanges()
         
         #--- remove layers join
-        progress.setText('Try remove old join <b>{}</b> -> <b>{}</b>'.format(Layer_to_update.id(),Layer_from_update.id()))
+        progress.pushInfo('Try remove old join <b>{}</b> -> <b>{}</b>'.format(Layer_to_update.id(),Layer_from_update.id()))
         Layer_to_update.removeJoin( Layer_from_update.id() )
         #--- join layers. Join only virtual field  'upd_coord_geometry'
-        progress.setText('Join: \n\t{} \n\t-> \n\t{}'.format(Layer_to_update.id(),Layer_from_update.id()))
-        joinObject = QgsVectorJoinInfo()
-        joinObject.joinLayerId = Layer_from_update.id()
-        joinObject.joinFieldName = _joinfield__from
-        joinObject.targetFieldName = _joinfield__to
-        joinObject.memoryCache = _use_cache
-        joinObject.prefix=_prefix
+        progress.pushInfo('Join: \n\t{} \n\t-> \n\t{}'.format(Layer_to_update.id(),Layer_from_update.id()))
+        joinObject = QgsVectorLayerJoinInfo()
+        joinObject.setJoinLayer(Layer_from_update)
+        joinObject.setJoinFieldName(_joinfield__from)
+        joinObject.setTargetFieldName(_joinfield__to)
+        joinObject.setUsingMemoryCache(_use_cache)
+        joinObject.setPrefix(_prefix)
         joinObject.setJoinFieldNamesSubset(_join_what_lst)
         Layer_to_update.addJoin(joinObject)
-        progress.setText('<b>End</b>')
+        progress.pushInfo('<b>End</b>')
+
+        return {}
                     
         

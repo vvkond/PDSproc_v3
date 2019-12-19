@@ -31,7 +31,6 @@ __revision__ = '$Format:%H$'
 import importlib
 import inspect
 from qgis.core import QgsProcessingProvider
-# from .tig_proc_set_map_variable import TigSetMapVariable
 
 def getPackageName():
     pn = ''
@@ -78,9 +77,9 @@ TigUpdateLabelLocationAlgorithm         =load_class('.tig_proc_upd_lbl_locaion.T
 TigUpdateTableFieldAlgorithm            =load_class('.tig_proc_upd_table_field.TigUpdateTableFieldAlgorithm'                    ,on_except=lambda:None)
 TigCreateMultilineRuleLabelAlgorithm    =load_class('.tig_proc_createMultilineRuledLabel.TigCreateMultilineRuleLabelAlgorithm'  ,on_except=lambda:None)
 TigSetMapVariable                       =load_class('.tig_proc_set_map_variable.TigSetMapVariable'                              ,on_except=lambda:None)
-# TigShowRuleLabelContours                =load_class('.tig_proc_showRuledContours.TigShowRuleLabelContours'                      ,on_except=lambda:None)
-# TigJoinLayersAlgorithm                  =load_class('.tig_proc_join_layers.TigJoinLayersAlgorithm'                              ,on_except=lambda:None)
-# TigSwitchLayerStyleAlgorithm            =load_class('.tig_proc_style_switch.TigSwitchLayerStyleAlgorithm'                       ,on_except=lambda:None)
+TigShowRuleLabelContours                =load_class('.tig_proc_showRuledContours.TigShowRuleLabelContours'                      ,on_except=lambda:None)
+TigJoinLayersAlgorithm                  =load_class('.tig_proc_join_layers.TigJoinLayersAlgorithm'                              ,on_except=lambda:None)
+TigSwitchLayerStyleAlgorithm            =load_class('.tig_proc_style_switch.TigSwitchLayerStyleAlgorithm'                       ,on_except=lambda:None)
 
 
 class TigSurfitProvider(QgsProcessingProvider):
@@ -105,9 +104,9 @@ class TigSurfitProvider(QgsProcessingProvider):
                         ,TigUpdateTableFieldAlgorithm()
                         ,TigCreateMultilineRuleLabelAlgorithm()
                         ,TigSetMapVariable()
-                        # ,TigShowRuleLabelContours()
-                        # ,TigJoinLayersAlgorithm()
-                        # ,TigSwitchLayerStyleAlgorithm()
+                        ,TigShowRuleLabelContours()
+                        ,TigJoinLayersAlgorithm()
+                        ,TigSwitchLayerStyleAlgorithm()
                         ]
         self.alglist=filter(lambda alg:alg is not None, self.alglist)
         # for alg in self.alglist:

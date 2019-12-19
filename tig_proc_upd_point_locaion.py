@@ -72,7 +72,7 @@ class TigUpdatePointLocationAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterField(
                 self.FIELD_TO_JOIN_A #id
                 , self.tr('Field for join layers in A(default well_id)') #display text
-                , ''
+                , 'well_id'
                 , self.LAYER_A #field layer
                 , QgsProcessingParameterField.Any
                 , optional=True #[is Optional?]
@@ -91,7 +91,7 @@ class TigUpdatePointLocationAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterField(
                 self.FIELD_TO_JOIN_B #id
                 , self.tr('Field to for layers in B(default well_id)') #display text
-                , ''
+                , 'well_id'
                 , self.LAYER_B #field layer
                 , QgsProcessingParameterField.Any
                 , optional=True #[is Optional?]
@@ -123,11 +123,11 @@ class TigUpdatePointLocationAlgorithm(QgsProcessingAlgorithm):
         Layer_to_update.removeJoin( Layer_from_update.id() )
         #--- join layers. Join only virtual field  'upd_coord_geometry'
         joinObject = QgsVectorLayerJoinInfo()
-        joinObject.joinLayerId = Layer_from_update.id()
-        joinObject.joinFieldName = Field_for_join_from
-        joinObject.targetFieldName = Field_for_join_to
-        joinObject.memoryCache = True
-        joinObject.prefix='upd_coord'
+        joinObject.setJoinLayer( Layer_from_update)
+        joinObject.setJoinFieldName(Field_for_join_from)
+        joinObject.setTargetFieldName(Field_for_join_to)
+        joinObject.setUsingMemoryCache(True)
+        joinObject.setPrefix('upd_coord')
         joinObject.setJoinFieldNamesSubset(['_geometry'])
         Layer_to_update.addJoin(joinObject)
         #---copy filter expression
@@ -151,7 +151,7 @@ class TigUpdatePointLocationAlgorithm(QgsProcessingAlgorithm):
         #--- restore filter expression
         Layer_to_update.setSubsetString(filter_exp)
         #--- remove layers join
-        Layer_to_update.removeJoin( Layer_from_update.id() )
+        # Layer_to_update.removeJoin( Layer_from_update.id() )
 
         return {}
         

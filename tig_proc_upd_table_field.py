@@ -218,11 +218,11 @@ class TigUpdateTableFieldAlgorithm(QgsProcessingAlgorithm):
         #--- join layers. Join only virtual field  'upd_coord_geometry'
         progress.pushInfo('Join: \n\t{} \n\t-> \n\t{}'.format(Layer_to_update.id(),Layer_from_update.id()))
         joinObject = QgsVectorLayerJoinInfo()
-        joinObject.joinLayerId = Layer_from_update.id()
-        joinObject.joinFieldName = _joinfield__from
-        joinObject.targetFieldName = _joinfield__to
-        joinObject.memoryCache = True
-        joinObject.prefix=prefix
+        joinObject.setJoinLayer(Layer_from_update)
+        joinObject.setJoinFieldName(_joinfield__from)
+        joinObject.setTargetFieldName(_joinfield__to)
+        joinObject.setUsingMemoryCache(True)
+        joinObject.setPrefix(prefix)
         joinObject.setJoinFieldNamesSubset([i[0] for i in field_to_upd])
         Layer_to_update.addJoin(joinObject)
         #---copy filter expression

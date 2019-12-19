@@ -99,7 +99,7 @@ class TigUpdateLabelLocationAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterField(
                 self.FIELD_JOIN_TO #id
                 , self.tr('Field for join layers in A(default well_id)') #display text
-                , ''
+                , 'well_id'
                 , self.LAYER_TO #field layer
                 , QgsProcessingParameterField.Any
                 , optional=True #[is Optional?]
@@ -108,7 +108,7 @@ class TigUpdateLabelLocationAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterField(
                 self.FIELD_LBLX_TO #id
                 , self.tr('Field with label x position(default lablx)') #display text
-                , ''
+                , 'lablx'
                 , self.LAYER_TO #field layer
                 , QgsProcessingParameterField.Any
                 , optional=True #[is Optional?]
@@ -117,7 +117,7 @@ class TigUpdateLabelLocationAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterField(
                 self.FIELD_LBLY_TO #id
                 , self.tr('Field with label y position(default lably)') #display text
-                , ''
+                , 'lably'
                 , self.LAYER_TO #field layer
                 , QgsProcessingParameterField.Any
                 , optional=True #[is Optional?]
@@ -126,7 +126,7 @@ class TigUpdateLabelLocationAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterField(
                 self.FIELD_LBLXOFF_TO #id
                 , self.tr('Field with label x offset position(default labloffx)') #display text
-                , ''
+                , 'labloffx'
                 , self.LAYER_TO #field layer
                 , QgsProcessingParameterField.Any
                 , optional=True #[is Optional?]
@@ -135,7 +135,7 @@ class TigUpdateLabelLocationAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterField(
                 self.FIELD_LBLYOFF_TO #id
                 , self.tr('Field with label y offset position(default labloffy)') #display text
-                , ''
+                , 'labloffy'
                 , self.LAYER_TO #field layer
                 , QgsProcessingParameterField.Any
                 , optional=True #[is Optional?]
@@ -144,7 +144,7 @@ class TigUpdateLabelLocationAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterField(
                 self.FIELD_LBLOFF_TO #id
                 , self.tr('Field with enable/disable offset offset position(default labloffset)') #display text
-                , ''
+                , 'labloffset'
                 , self.LAYER_TO #field layer
                 , QgsProcessingParameterField.Any
                 , optional=True #[is Optional?]
@@ -175,7 +175,7 @@ class TigUpdateLabelLocationAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterField(
                 self.FIELD_JOIN_FROM #id
                 , self.tr('Field to for layers in B(default well_id)') #display text
-                , ''
+                , 'well_id'
                 , self.LAYER_FROM #field layer
                 , QgsProcessingParameterField.Any
                 , optional=True #[is Optional?]
@@ -185,7 +185,7 @@ class TigUpdateLabelLocationAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterField(
                 self.FIELD_LBLX_FROM #id
                 , self.tr('Field with label x position(default lablx)') #display text
-                , ''
+                , 'lablx'
                 , self.LAYER_FROM #field layer
                 , QgsProcessingParameterField.Any
                 , optional=True #[is Optional?]
@@ -194,7 +194,7 @@ class TigUpdateLabelLocationAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterField(
                 self.FIELD_LBLY_FROM #id
                 , self.tr('Field with label y position(default lably)') #display text
-                , ''
+                , 'lably'
                 , self.LAYER_FROM #field layer
                 , QgsProcessingParameterField.Any
                 , optional=True #[is Optional?]
@@ -203,7 +203,7 @@ class TigUpdateLabelLocationAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterField(
                 self.FIELD_LBLXOFF_FROM #id
                 , self.tr('Field with label x offset position(default labloffx)') #display text
-                , ''
+                , 'labloffx'
                 , self.LAYER_FROM #field layer
                 , QgsProcessingParameterField.Any
                 , optional=True #[is Optional?]
@@ -212,7 +212,7 @@ class TigUpdateLabelLocationAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterField(
                 self.FIELD_LBLYOFF_FROM #id
                 , self.tr('Field with label y offset position(default labloffy)') #display text
-                , ''
+                , 'labloffy'
                 , self.LAYER_FROM #field layer
                 , QgsProcessingParameterField.Any
                 , optional=True #[is Optional?]
@@ -221,7 +221,7 @@ class TigUpdateLabelLocationAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterField(
                 self.FIELD_LBLOFF_FROM #id
                 , self.tr('Field with enable/disable offset offset position(default labloffset)') #display text
-                , ''
+                , 'labloffset'
                 , self.LAYER_FROM #field layer
                 , QgsProcessingParameterField.Any
                 , optional=True #[is Optional?]
@@ -289,11 +289,11 @@ class TigUpdateLabelLocationAlgorithm(QgsProcessingAlgorithm):
         #--- join layers. Join only virtual field  'upd_coord_geometry'
         progress.pushInfo('Join: \n\t{} \n\t-> \n\t{}'.format(Layer_to_update.id(),Layer_from_update.id()))
         joinObject = QgsVectorLayerJoinInfo()
-        joinObject.joinLayerId = Layer_from_update.id()
-        joinObject.joinFieldName = _joinfield__from
-        joinObject.targetFieldName = _joinfield__to
-        joinObject.memoryCache = True
-        joinObject.prefix='upd_lbl_'
+        joinObject.setJoinLayer(Layer_from_update)
+        joinObject.setJoinFieldName(_joinfield__from)
+        joinObject.setTargetFieldName(_joinfield__to)
+        joinObject.setUsingMemoryCache(True)
+        joinObject.setPrefix('upd_lbl_')
         joinObject.setJoinFieldNamesSubset([
                                             _copyfield_lblx_from
                                             ,_copyfield_lbly_from

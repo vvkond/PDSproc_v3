@@ -12,24 +12,27 @@ __revision__ = '$Format:%H$'
 import tempfile
 import os
 
-from PyQt4.QtCore import QSettings, QProcess, QVariant
-from qgis.utils import iface
+from qgis.PyQt.QtCore import QCoreApplication, QVariant
+from qgis.analysis import QgsRasterCalculatorEntry, QgsRasterCalculator
 from qgis.core import *
-
-from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.parameters import ParameterMultipleInput
-from processing.core.parameters import ParameterRaster
-from processing.core.parameters import ParameterVector
-from processing.core.parameters import ParameterTableField,ParameterTableMultipleField,ParameterMultipleInput
-from processing.core.parameters import ParameterBoolean,ParameterString
-from processing.core.outputs import OutputVector
-from processing.tools import dataobjects, vector
-from processing.tools.vector import VectorWriter
+from qgis.core import (QgsProcessing,
+                       QgsFeatureSink,
+                       QgsProcessingAlgorithm,
+                       QgsProcessingParameterFeatureSource,
+                       QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterVectorLayer,
+                       QgsProcessingParameterRasterDestination,
+                       QgsProcessingParameterField,
+                       QgsProcessingParameterExtent,
+                       QgsProcessingParameterNumber,
+                       QgsProcessingParameterVectorDestination,
+                       QgsProcessingParameterFileDestination,
+                       QgsProcessingParameterString)
 
 #===============================================================================
 # 
 #===============================================================================
-class TigSwitchLayerStyleAlgorithm(GeoAlgorithm):
+class TigSwitchLayerStyleAlgorithm(QgsProcessingAlgorithm):
     """
     All Processing algorithms should extend the GeoAlgorithm class.
     """
@@ -47,47 +50,33 @@ class TigSwitchLayerStyleAlgorithm(GeoAlgorithm):
     #===========================================================================
     # 
     #===========================================================================
-    def defineCharacteristics(self):
-        """Here we define the inputs and output of the algorithm, along
-        with some other properties.
-        
-        In console try:
-            from processing.core import parameters 
-            dir(parameters) 
-            
-        https://gis.stackexchange.com/questions/156800/custom-qgis-processing-tool-fails-to-copy-features
-        https://github.com/qgis/QGIS/blob/master/python/plugins/processing/core/parameters.py
-        """
+    def tr(self, string):
+        return QCoreApplication.translate('Processing', string)
 
-        # The name that the user will see in the toolbox
-        self.name = self.tr(u'Switch layer style')
-        self.i18n_name = u'Переключение стиля слоя'
+    def name(self):
+        return 'TigSwitchLayerStyleAlgorithm'
 
-        # The branch of the toolbox under which the algorithm will appear
-        self.group = self.tr(u'Tools')
+    def groupId(self):
+        return 'PUMAtools'
 
-        # We add the input vector layer. It can have any kind of geometry
-        # It is a mandatory (not optional) one, hence the False argument
-        
-        #---------------LAYER A
-#         self.addParameter(
-#             ParameterVector(
-#                 self.LAYER_TO  #layer id
-#                 , self.tr('Layer to update') #display text
-#                 , [ParameterVector.VECTOR_TYPE_POINT,ParameterVector.VECTOR_TYPE_LINE] #layer types
-#                 , False #[is Optional?]
-#                 ))
+    def group(self):
+        return self.tr('Инструменты')
 
+    def displayName(self):
+        return self.tr(u'Переключение стиля слоя')
+
+    def createInstance(self):
+        return TigSwitchLayerStyleAlgorithm()
+
+    def initAlgorithm(self, config):
         self.addParameter(
-            ParameterVector(
+            QgsProcessingParameterVectorLayer(
                 self.LAYER_TO  #layer id
                 , self.tr('Layer to update') #display text
-                , ParameterVector.VECTOR_TYPE_ANY #layer types
-                , False #[is Optional?]
                 ))
 
         self.addParameter(
-            ParameterString( #name='', description='', default=None, multiline=False,  optional=False, evaluateExpressions=False
+            QgsProcessingParameterString( #name='', description='', default=None, multiline=False,  optional=False, evaluateExpressions=False
                 self.STYLE    #name
                 , u'Стиль' #desc
                 , 'default' #default
@@ -100,22 +89,23 @@ class TigSwitchLayerStyleAlgorithm(GeoAlgorithm):
     #===========================================================================
     # 
     #===========================================================================
-    def processAlgorithm(self, progress):
+    def processAlgorithm(self, parameters, context, progress):
         """Here is where the processing itself takes place."""
-        progress.setText('<b>Start</b>')
+        progress.pushInfo('<b>Start</b>')
         
         
-        progress.setText('Read settings')
+        progress.pushInfo('Read settings')
         # The first thing to do is retrieve the values of the parameters
         # entered by the user
-        Layer_to_update      = self.getParameterValue(self.LAYER_TO)
-        _style               = self.getParameterValue(self.STYLE)
+        Layer_to_update      = self.parameterAsVectorLayer(parameters, self.LAYER_TO, context)
+        _style               = self.parameterAsString(parameters, self.STYLE, context)
         #--- create virtual field with geometry
-        progress.setText('Try change style <b>{}</b> -> <b>{}</b>'.format(Layer_to_update,_style))
-        Layer_to_update=dataobjects.getObject(Layer_to_update)      #processing.getObjectFromUri()
+        progress.pushInfo('Try change style <b>{}</b> -> <b>{}</b>'.format(Layer_to_update,_style))
         LayerStyles=Layer_to_update.styleManager()
         LayerStyles.setCurrentStyle(_style)
-        progress.setText('<b>End</b>')
+        progress.pushInfo('<b>End</b>')
+
+        return {}
             
                     
         

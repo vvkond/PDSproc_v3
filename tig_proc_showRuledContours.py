@@ -12,27 +12,32 @@ __revision__ = '$Format:%H$'
 import tempfile
 import os
 
-from PyQt4.QtCore import QSettings, QProcess, QVariant
+from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.utils import iface
 from qgis.core import *
-
-from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.parameters import ParameterMultipleInput, ParameterNumber,\
-    ParameterRange
-from processing.core.parameters import ParameterRaster
-from processing.core.parameters import ParameterVector
-from processing.core.parameters import ParameterTableField
-from processing.core.outputs import OutputVector
-from processing.tools import dataobjects, vector
-from processing.tools.vector import VectorWriter
-
-
+from qgis.core import (QgsProcessing,
+                       QgsFeatureSink,
+                       QgsProcessingAlgorithm,
+                       QgsProcessingParameterFeatureSource,
+                       QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterVectorLayer,
+                       QgsProcessingParameterRasterDestination,
+                       QgsProcessingParameterField,
+                       QgsProcessingParameterExtent,
+                       QgsProcessingParameterNumber,
+                       QgsProcessingParameterString,
+                       QgsProcessingParameterBoolean,
+                       QgsProcessingParameterFile,
+                       QgsProcessingParameterVectorDestination,
+                       QgsProcessingParameterFileDestination,
+                       QgsExpressionContextUtils,
+                       QgsProcessingParameterRange)
 
 
 #===============================================================================
 # 
 #===============================================================================
-class TigShowRuleLabelContours(GeoAlgorithm):
+class TigShowRuleLabelContours(QgsProcessingAlgorithm):
     """
     All Processing algorithms should extend the GeoAlgorithm class.
     """
@@ -54,61 +59,60 @@ class TigShowRuleLabelContours(GeoAlgorithm):
     #===========================================================================
     # 
     #===========================================================================
-    def defineCharacteristics(self):
-        """Here we define the inputs and output of the algorithm, along
-        with some other properties.
-        
-        In console try:
-            from processing.core import parameters 
-            dir(parameters) 
-            
-        https://gis.stackexchange.com/questions/156800/custom-qgis-processing-tool-fails-to-copy-features
-        https://github.com/qgis/QGIS/blob/master/python/plugins/processing/core/parameters.py
-        """
+    def tr(self, string):
+        return QCoreApplication.translate('Processing', string)
 
-        # The name that the user will see in the toolbox
-        self.name = self.tr(u'Show contours with step')
-        self.i18n_name = u'Отображение контуров с указанным шагом'
+    def name(self):
+        return 'TigShowRuleLabelContours'
 
-        # The branch of the toolbox under which the algorithm will appear
-        self.group = self.tr(u'Tools')
+    def groupId(self):
+        return 'PUMAtools'
 
-        # We add the input vector layer. It can have any kind of geometry
-        # It is a mandatory (not optional) one, hence the False argument
-        
+    def group(self):
+        return self.tr('Инструменты')
+
+    def displayName(self):
+        return self.tr(u'Отображение контуров с указанным шагом')
+
+    def createInstance(self):
+        return TigShowRuleLabelContours()
+
+    def initAlgorithm(self, config):
+
         #---------------LAYER A
         self.addParameter(
-            ParameterVector(
+            QgsProcessingParameterVectorLayer(
                 self.LAYER_TO  #layer id
                 , self.tr('Layer with contours') #display text
-                , [ParameterVector.VECTOR_TYPE_LINE] #layer types
+                , [QgsProcessing.TypeVectorLine] #layer types
+                , ''
                 , False #[is Optional?]
                 ))
 
         self.addParameter(
-            ParameterTableField(
+            QgsProcessingParameterField(
                 self.VALUE_FIELD
                 , self.tr('Field {} with contour value ').format(self.VALUE_FIELD) #display text
+                , ''
                 , self.LAYER_TO #field layer
-                , ParameterTableField.DATA_TYPE_NUMBER
-                , False #[is Optional?]
+                , QgsProcessingParameterField.Numeric
+                , optional=False #[is Optional?]
                 ))
         self.addParameter(
-            ParameterRange( 
+            QgsProcessingParameterRange(
                 name=self.LIMITS
                 , description=self.tr('Interval limits') #display text
-                , default='-20000,20000'
+                , defaultValue='-20000,20000'
                 , optional=True
                 )
             )
         
         for [param_id,desc,is_optional,param_default] in self.PARAMS:
             self.addParameter(
-                ParameterNumber( 
+                QgsProcessingParameterNumber(
                     name=param_id 
                     , description= desc
-                    , minValue=None, maxValue=None
-                    , default=param_default
+                    , defaultValue=param_default
                     , optional=is_optional
                     ))
             
@@ -116,37 +120,36 @@ class TigShowRuleLabelContours(GeoAlgorithm):
     #===========================================================================
     # 
     #===========================================================================
-    def processAlgorithm(self, progress):
+    def processAlgorithm(self, parameters, context, progress):
         """Here is where the processing itself takes place."""
-        progress.setText('<b>Start</b>')
+        progress.pushInfo('<b>Start</b>')
         
-        progress.setText('Read settings')
+        progress.pushInfo('Read settings')
         # The first thing to do is retrieve the values of the parameters
         # entered by the user
-        Layer_to_update     = self.getParameterValue(self.LAYER_TO)
-        _value_field_= self.getParameterValue(self.VALUE_FIELD)
-        _range_field_= self.getParameterValue(self.LIMITS)
-        _step_field_= self.getParameterValue(self.STEP)
-        _skeep_field_= self.getParameterValue(self.SKEEP_EACH)
-        
+        editLayer     = self.parameterAsVectorLayer(parameters, self.LAYER_TO, context)
+        _value_field_= self.parameterAsDouble(parameters, self.VALUE_FIELD, context)
+        _range_field_= self.parameterAsRange(parameters, self.LIMITS, context)
+        _step_field_= self.parameterAsDouble(parameters, self.STEP, context)
+        _skeep_field_= self.parameterAsDouble(parameters, self.SKEEP_EACH, context)
 
         #--- create virtual field with geometry
-        editLayer=dataobjects.getObject(Layer_to_update)      #processing.getObjectFromUri()
-        layerCurrentStyleRendere=editLayer.rendererV2()
-        if not type(layerCurrentStyleRendere)==QgsRuleBasedRendererV2:
+        # editLayer=dataobjects.getObject(Layer_to_update)      #processing.getObjectFromUri()
+        layerCurrentStyleRendere=editLayer.renderer()
+        if not type(layerCurrentStyleRendere)==QgsRuleBasedRenderer:
             editLayerStyles=editLayer.styleManager()
             editLayerStyles.addStyle( u'контуры', editLayerStyles.style(editLayerStyles.currentStyle() ))
             editLayerStyles.setCurrentStyle(u'контуры')
 
-            progress.setText('Change style rendered to rule based')
-            renderer = QgsRuleBasedRendererV2(QgsRuleBasedRendererV2.Rule(None))
+            progress.pushInfo('Change style rendered to rule based')
+            renderer = QgsRuleBasedRenderer(QgsRuleBasedRenderer.Rule(None))
             superRootRule = renderer.rootRule() #super Root Rule
-            editLayer.setRendererV2(renderer)
+            editLayer.setRenderer(renderer)
         else:
             superRootRule=layerCurrentStyleRendere.rootRule() 
         #---------
-        progress.setText('Create rule')
-        symbol = QgsLineSymbolV2.createSimple({ 
+        progress.pushInfo('Create rule')
+        symbol = QgsLineSymbol.createSimple({
                                                     'name' :'0'
                                                  ,  'type': 'line'
                                                  #,  'class':'SimpleLine'
@@ -174,24 +177,25 @@ class TigShowRuleLabelContours(GeoAlgorithm):
             </layer>
            </symbol>
         """        
-        sub_rule = QgsRuleBasedRendererV2.Rule(symbol)
-        progress.setText('Set rule label')
-        sub_rule.setLabel(u'Контуры от {} до {} с шагом {} {}'.format(_range_field_.split(",")[0]
-                                                                                      ,_range_field_.split(",")[1]
+        sub_rule = QgsRuleBasedRenderer.Rule(symbol)
+        progress.pushInfo('Set rule label')
+        sub_rule.setLabel(u'Контуры от {} до {} с шагом {} {}'.format(_range_field_[0]
+                                                                                      ,_range_field_[1]
                                                                                       ,_step_field_
                                                                                       ,u'исключая каждый {}'.format(_skeep_field_) if _skeep_field_>0  else ''
                                                                                       ))
-        progress.setText('Set rule filter')
+        progress.pushInfo('Set rule filter')
         sub_rule.setFilterExpression(u'isValueInIntervalWithSkeep({value}, {limit_min}, {limit_max}, {step}, {skeep_each})'.format(
             value=_value_field_
-            ,limit_min=_range_field_.split(",")[0]
-            ,limit_max=_range_field_.split(",")[1]
+            ,limit_min=_range_field_[0]
+            ,limit_max=_range_field_[1]
             ,step=_step_field_
             ,skeep_each=_skeep_field_
             )) 
         superRootRule.appendChild(sub_rule)
-        progress.setText('End')
-        pass
+        progress.pushInfo('End')
+
+        return {}
         
                     
                     
